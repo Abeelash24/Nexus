@@ -1,59 +1,82 @@
-# Placementconnect
+# PlacementConnect — Connect. Prepare. Get Placed.
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.19.
+**PlacementConnect** is a college placement-management and career-development platform connecting **Students**, **Alumni Mentors**, and **Placement Officers / Administrators**.
 
-## Development server
+---
 
-To start a local development server, run:
+## 🚀 Key Highlights & Architectural Overview
 
+### 1. Multi-Role Portals
+- **Student Portal**:
+  - **Analytics Dashboard**: Greeting banner, 4 core metric cards (Applications, Shortlisted, Interviews, Selected), dynamic profile completion tracker, live application timeline, recommended job opportunities, and study kits.
+  - **Career Profile**: High-impact portfolio with verified CGPA, 10th/12th percentages, skill proficiency badges, GitHub/LinkedIn links, projects showcase, certifications, and resume upload/download.
+  - **Placement Job Board**: Multi-factor filtering (domain, salary, location, CGPA eligibility), duplicate application prevention, and detailed job requirement breakdowns.
+  - **Multi-Stage Application Pipeline**: Visual timeline stepper (`Applied` → `Shortlisted` → `Aptitude` → `Technical Interview` → `HR Interview` → `Selected` / `Rejected`) with interview links and recruiter remarks.
+  - **Alumni Mentors Directory**: Search mentors by company (Google, Microsoft, Amazon, NVIDIA), department, graduation year, and mentorship availability.
+  - **Resource Drive**: Google Drive-inspired study material vault with 13 categorized folders (DSA, Aptitude, DBMS, OS, Computer Networks, System Design, Java, Python & ML, Web Dev, Cloud & DevOps, HR Prep, Company Kits, Resume Prep), breadcrumb navigation, grid/list toggle, upload, and download triggers.
+  - **Real-Time Chat & Messaging**: One-to-one messaging with conversation stream, online indicators, file attachments, and simulated mentor replies.
+  - **Voice & Video Calling (WebRTC)**: Interactive calling modal with video streams, mic/camera controls, and session duration timer.
+  - **Notification Center**: Filterable alerts for applications, new drives, mentor messages, and campus announcements.
+
+- **Alumni Portal**:
+  - **Mentorship Command Center**: Live mentoring availability toggle, mentee statistics, junior student talent directory with CGPA filters, and direct 1-on-1 mock call triggers.
+
+- **Admin / Placement Officer Portal**:
+  - **Placement Analytics Hub**: Real-time KPI cards (Placement Rate, Average CTC, Total Students, Partner Companies) and interactive pipeline funnels & department distribution charts.
+  - **Candidate Pipeline Tracker**: Master candidate queue with instant round advancement (`Shortlist`, `Technical Interview`, `Selected`, `Rejected`) and interview link broadcaster.
+  - **Job Drives Manager**: Post new drives, configure CGPA cutoffs, and close application windows.
+  - **Recruiter Directory**: Manage 20+ corporate hiring partners and salary tiers.
+  - **100+ Student Directory**: Filterable master student database with CSV Roster Export.
+
+---
+
+## 🛠️ Technology Stack
+
+- **Frontend**: Angular 21 (Standalone Components, Signals, Reactive Forms, Router, RxJS)
+- **Styling**: Tailwind CSS v4 + Glassmorphism UI tokens
+- **Icons**: Custom universal SVG icon system
+- **Backend & Database**: Supabase PostgreSQL with Row Level Security (RLS) policies
+- **Deployment**: Configured for Vercel with SPA rewrite headers (`vercel.json`)
+
+---
+
+## ⚡ Quick Start & Local Execution
+
+### 1. Install Dependencies
 ```bash
-ng serve
+npm install
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
+### 2. Start Development Server
 ```bash
-ng generate component component-name
+npm start
+```
+Navigate to `http://localhost:4200/`.
+
+### 3. Production Build
+```bash
+npm run build
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+---
 
-```bash
-ng generate --help
-```
+## 🗄️ Database & Supabase Deployment
 
-## Building
+The complete PostgreSQL database definitions and seed scripts are provided in the `/supabase` directory:
+- `supabase/schema.sql`: Full DDL, relational tables, constraints, indexes, and Row Level Security (RLS) policies.
+- `supabase/seed.sql`: Realistic dataset containing 100+ students, 25 alumni mentors, 20 companies, 30 active job openings, and 100+ study resources.
 
-To build the project run:
+To deploy into Supabase:
+1. Open your Supabase project dashboard.
+2. Navigate to the **SQL Editor**.
+3. Copy and run `supabase/schema.sql`, then run `supabase/seed.sql`.
+4. Update your Supabase URL and Anon Key in `src/environments/environment.ts`.
 
-```bash
-ng build
-```
+---
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## 🎯 Instant Demo Access
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Use the **Demo Switcher Toolbar** located at the top-right header or on the login page to instantly evaluate the application:
+- 🎓 **Student**: Rahul Sharma (`rahul.sharma@placementconnect.edu`)
+- 💼 **Alumni**: Priya Nair, Senior SDE @ Google (`priya.nair@google.com`)
+- ⚡ **Admin**: Dr. Anand Verma, Placement Officer (`placement.officer@placementconnect.edu`)
