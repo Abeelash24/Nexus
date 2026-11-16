@@ -114,39 +114,55 @@ import { EmptyStateComponent } from '../../../shared/ui/empty-state.component';
       <div *ngIf="filteredJobs().length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         <div
           *ngFor="let job of filteredJobs()"
-          class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs hover:shadow-lg hover:border-blue-200 transition-all duration-200 flex flex-col justify-between group"
+          class="bg-white rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-lg hover:border-blue-200 transition-all duration-200 flex flex-col justify-between overflow-hidden group"
         >
           <div>
-            <!-- Card Header: Company Logo & Bookmark -->
-            <div class="flex items-start justify-between gap-3 mb-4">
-              <div class="flex items-center gap-3 min-w-0">
-                <img
-                  [src]="job.companyLogo"
-                  [alt]="job.companyName"
-                  (error)="onLogoError($event, job.companyName)"
-                  class="w-12 h-12 rounded-2xl object-cover border border-slate-100 shadow-xs shrink-0"
-                />
-                <div class="min-w-0">
-                  <h3 class="text-base font-bold text-slate-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
-                    {{ job.title }}
-                  </h3>
-                  <p class="text-xs font-semibold text-slate-500">{{ job.companyName }}</p>
-                </div>
+            <!-- Drive Banner Thumbnail if present -->
+            <div *ngIf="job.bannerUrl" class="h-32 w-full overflow-hidden bg-slate-100 relative">
+              <img
+                [src]="job.bannerUrl"
+                [alt]="job.title"
+                (error)="onBannerError($event)"
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div class="absolute bottom-2 right-2">
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/90 text-slate-800 backdrop-blur-xs shadow-xs">
+                  {{ job.employmentType }}
+                </span>
               </div>
-
-              <button
-                type="button"
-                (click)="bookmarkService.toggleBookmark('job', job.id, job.title)"
-                class="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                [title]="bookmarkService.isBookmarked('job', job.id) ? 'Remove bookmark' : 'Bookmark job'"
-              >
-                <app-icon
-                  name="bookmark"
-                  [size]="18"
-                  [customClass]="bookmarkService.isBookmarked('job', job.id) ? 'fill-blue-600 text-blue-600' : ''"
-                ></app-icon>
-              </button>
             </div>
+
+            <div class="p-6">
+              <!-- Card Header: Company Logo & Bookmark -->
+              <div class="flex items-start justify-between gap-3 mb-4">
+                <div class="flex items-center gap-3 min-w-0">
+                  <img
+                    [src]="job.companyLogo"
+                    [alt]="job.companyName"
+                    (error)="onLogoError($event, job.companyName)"
+                    class="w-12 h-12 rounded-2xl object-cover border border-slate-100 shadow-xs shrink-0"
+                  />
+                  <div class="min-w-0">
+                    <h3 class="text-base font-bold text-slate-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                      {{ job.title }}
+                    </h3>
+                    <p class="text-xs font-semibold text-slate-500">{{ job.companyName }}</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  (click)="bookmarkService.toggleBookmark('job', job.id, job.title)"
+                  class="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  [title]="bookmarkService.isBookmarked('job', job.id) ? 'Remove bookmark' : 'Bookmark job'"
+                >
+                  <app-icon
+                    name="bookmark"
+                    [size]="18"
+                    [customClass]="bookmarkService.isBookmarked('job', job.id) ? 'fill-blue-600 text-blue-600' : ''"
+                  ></app-icon>
+                </button>
+              </div>
 
             <!-- Salary & Domain Badges -->
             <div class="flex flex-wrap gap-2 mb-4">
@@ -294,7 +310,8 @@ export class JobListComponent {
   });
 
   filteredJobs = computed(() => {
-    let list = this.jobService.jobs();
+    // Only display active / upcoming jobs to students, excluding Closed jobs
+    let list = this.jobService.jobs().filter(j => j.status === 'Active' || j.status === 'Upcoming');
     const q = this.searchQuery().toLowerCase().trim();
     const dom = this.selectedDomain();
     const loc = this.selectedLocation();
@@ -349,6 +366,11 @@ export class JobListComponent {
     this.selectedLocation.set('all');
     this.onlyEligible.set(false);
     this.onlyRecommended.set(false);
+  }
+
+  onBannerError(event: Event) {
+    const target = event.target as HTMLElement;
+    target.style.display = 'none';
   }
 
   onLogoError(event: Event, companyName?: string) {

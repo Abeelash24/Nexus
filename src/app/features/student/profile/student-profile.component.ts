@@ -6,6 +6,7 @@ import { ApplicationService } from '../../../core/services/application.service';
 import { JobService } from '../../../core/services/job.service';
 import { TaskService } from '../../../core/services/task.service';
 import { SkillMatchingService, SingleJobSkillMatch } from '../../../core/services/skill-matching.service';
+import { SupabaseService } from '../../../core/services/supabase.service';
 import { StudentTask, TaskCategory, TaskPriority, TaskStatus } from '../../../core/models/task.model';
 import { IconComponent } from '../../../shared/icons/icon.component';
 import { BadgeComponent } from '../../../shared/ui/badge.component';
@@ -93,10 +94,12 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
             <button
               type="button"
               (click)="downloadResume()"
-              class="px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
+              [disabled]="isDownloadingResume()"
+              class="px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60"
             >
-              <app-icon name="download" [size]="14"></app-icon>
-              Download PDF
+              <span *ngIf="isDownloadingResume()" class="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+              <app-icon *ngIf="!isDownloadingResume()" name="download" [size]="14"></app-icon>
+              {{ isDownloadingResume() ? 'Loading...' : 'Download PDF' }}
             </button>
           </div>
         </div>
@@ -1317,6 +1320,9 @@ export class StudentProfileComponent {
   jobService = inject(JobService);
   taskService = inject(TaskService);
   skillMatchingService = inject(SkillMatchingService);
+  supabase = inject(SupabaseService);
+
+  isDownloadingResume = signal(false);
 
   student = this.studentService.currentStudent;
   studentApplications = this.applicationService.studentApplications;
@@ -1542,13 +1548,37 @@ export class StudentProfileComponent {
     }
   }
 
-  downloadResume() {
+  async downloadResume() {
     const s = this.student();
-    if (s.resumeUrl && s.resumeUrl.startsWith('http')) {
-      window.open(s.resumeUrl, '_blank');
+    if (!s.resumeUrl && !s.resumeFileName) {
+      this.generateTextResumeFallback(s);
       return;
     }
 
+    if (s.resumeUrl) {
+      if (this.supabase.isConfigured) {
+        this.isDownloadingResume.set(true);
+        try {
+          const signedUrl = await this.supabase.createSignedUrl('resumes', s.resumeUrl);
+          if (signedUrl) {
+            window.open(signedUrl, '_blank');
+            return;
+          }
+        } finally {
+          this.isDownloadingResume.set(false);
+        }
+      }
+
+      if (s.resumeUrl.startsWith('http') || s.resumeUrl.startsWith('blob:')) {
+        window.open(s.resumeUrl, '_blank');
+        return;
+      }
+    }
+
+    this.generateTextResumeFallback(s);
+  }
+
+  private generateTextResumeFallback(s: any) {
     const element = document.createElement('a');
     element.setAttribute(
       'href',

@@ -36,32 +36,32 @@ export class StudentService {
 
     if (match) return match;
 
-    // Create virtual student representation for newly logged in user
+    // Create dynamic student representation for newly logged in user without hardcoded test fixtures
     return {
       id: `s-${user.id}`,
       userId: user.id,
-      fullName: user.fullName,
+      fullName: user.fullName || 'Student',
       email: user.email,
       profilePhoto: user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      phone: '+91 98765 43210',
-      department: 'Computer Science & Engineering',
+      phone: user.phone || '',
+      department: user.department || 'Computer Science & Engineering',
       course: 'B.Tech',
       batch: '2023-2027',
       graduationYear: 2027,
-      rollNumber: '23CS101',
-      cgpa: 8.85,
-      tenthPercentage: 92.5,
-      twelfthPercentage: 91.0,
-      skills: ['C++', 'Java', 'Data Structures', 'Algorithms', 'SQL', 'TypeScript'],
+      rollNumber: user.rollNumber || '',
+      cgpa: 7.50,
+      tenthPercentage: 85.0,
+      twelfthPercentage: 85.0,
+      skills: ['C++', 'Java', 'SQL', 'TypeScript'],
       preferredDomain: 'Software Development',
-      bio: 'Final-year Computer Science Engineering student passionate about distributed systems, backend architectures, and high-performance algorithms.',
-      githubUrl: 'https://github.com',
-      linkedinUrl: 'https://linkedin.com',
+      bio: '',
+      githubUrl: '',
+      linkedinUrl: '',
       portfolioUrl: '',
       resumeUrl: '',
-      resumeFileName: 'Resume_2026.pdf',
-      placementStatus: 'In Progress',
-      profileCompletion: 85,
+      resumeFileName: '',
+      placementStatus: 'Not Placed',
+      profileCompletion: 50,
       isActive: true,
       projects: [],
       certifications: [],
@@ -140,7 +140,7 @@ export class StudentService {
     }
   }
 
-  private mapDbRowToStudent(row: any): Student {
+  mapDbRowToStudent(row: any): Student {
     return {
       id: row.id,
       userId: row.user_id,
@@ -178,6 +178,30 @@ export class StudentService {
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+  }
+
+  async loadStudentForCurrentUser(): Promise<Student | null> {
+    const user = this.authService.currentUser();
+    if (!user) return null;
+    const client = this.supabase.getClient();
+    if (!this.supabase.isConfigured || !client) return null;
+
+    try {
+      const { data, error } = await client
+        .from('students')
+        .select('*')
+        .or(`user_id.eq.${user.id},email.ilike.${user.email}`)
+        .maybeSingle();
+
+      if (data && !error) {
+        const student = this.mapDbRowToStudent(data);
+        this.addStudentDirectly(student);
+        return student;
+      }
+    } catch (err) {
+      console.warn('Could not load student for current user:', err);
+    }
+    return null;
   }
 
   getStudentById(id: string): Student | undefined {
@@ -230,9 +254,6 @@ export class StudentService {
           resume_file_name: updated.resumeFileName,
           skills: updated.skills,
           preferred_domain: updated.preferredDomain,
-          placement_status: updated.placementStatus,
-          placed_company: updated.placedCompany,
-          placed_package: updated.placedPackage,
           profile_completion: updated.profileCompletion,
           projects: updated.projects,
           certifications: updated.certifications,

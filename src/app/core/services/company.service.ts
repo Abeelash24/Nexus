@@ -74,7 +74,9 @@ export class CompanyService {
     return {
       id: row.id,
       name: row.name,
-      logo: row.logo || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=128&auto=format&fit=crop&q=80',
+      logo: row.logo && row.logo.trim() !== ''
+        ? row.logo
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'Company')}&background=0284c7&color=fff&bold=true`,
       website: row.website || '',
       description: row.description || '',
       industry: row.industry || 'Technology',
@@ -90,6 +92,181 @@ export class CompanyService {
 
   getCompanyById(id: string): Company | undefined {
     return this.companiesSignal().find(c => c.id === id);
+  }
+
+  getCompanyByName(name: string): Company | undefined {
+    const q = (name || '').toLowerCase().trim();
+    if (!q) return undefined;
+    return this.companiesSignal().find(c => {
+      const cName = (c.name || '').toLowerCase().trim();
+      return cName === q || cName.includes(q) || q.includes(cName);
+    });
+  }
+
+  /**
+   * Uploads an official company logo to Supabase Storage 'company-logos' bucket.
+   * Validates MIME type (JPEG/PNG/WebP) and file size (max 5MB).
+   */
+  async uploadCompanyLogo(file: File): Promise<{ url: string; error?: string }> {
+    const allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedMime.includes(file.type)) {
+      const msg = 'Invalid file format. Please upload a JPEG, PNG, or WebP logo image.';
+      this.toast.error('Logo Upload Error', msg);
+      return { url: '', error: msg };
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      const msg = 'File exceeds maximum size limit of 5MB.';
+      this.toast.error('Logo Upload Error', msg);
+      return { url: '', error: msg };
+    }
+
+    const client = this.supabase.getClient();
+    if (!this.supabase.isConfigured || !client) {
+      const fallbackUrl = URL.createObjectURL(file);
+      this.toast.info('Local Preview Ready', 'Company logo loaded for local preview.');
+      return { url: fallbackUrl };
+    }
+
+    try {
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const cleanFileName = `logo_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+      const filePath = `logos/${cleanFileName}`;
+
+      const { data, error } = await client.storage
+        .from('company-logos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
+
+      if (error) {
+        console.warn('Supabase company logo upload error:', error);
+        const fallbackUrl = URL.createObjectURL(file);
+        this.toast.warning('Storage Notice', `${error.message}. Local preview used.`);
+        return { url: fallbackUrl, error: error.message };
+      }
+
+      const { data: pubData } = client.storage
+        .from('company-logos')
+        .getPublicUrl(filePath);
+
+      const publicUrl = pubData.publicUrl;
+      this.toast.success('Company Logo Uploaded', 'Official organization logo uploaded successfully.');
+      return { url: publicUrl };
+    } catch (err: any) {
+      console.warn('Unexpected error uploading company logo:', err);
+      const fallbackUrl = URL.createObjectURL(file);
+      return { url: fallbackUrl, error: err?.message || 'Upload failed' };
+    }
+  }
+
+  /**
+   * Updates the official company logo in public.companies.
+   * If the company doesn't exist yet, creates it.
+   * The database trigger automatically propagates the updated logo to all placement drives and jobs.
+   */
+  async updateCompanyLogo(companyName: string, logoUrl: string): Promise<Company> {
+    const existing = this.getCompanyByName(companyName);
+    const client = this.supabase.getClient();
+    const finalLogo = logoUrl?.trim() || `https://ui-avatars.com/api/?name=${encodeURIComponent(companyName)}&background=2563eb&color=fff&size=128&bold=true`;
+
+    let targetCompany: Company;
+
+    if (existing) {
+      targetCompany = {
+        ...existing,
+        logo: finalLogo,
+        updatedAt: new Date().toISOString()
+      };
+
+      this.companiesSignal.update(list =>
+        list.map(c => c.id === existing.id ? targetCompany : c)
+      );
+    } else {
+      targetCompany = {
+        id: `c-${Date.now()}`,
+        name: companyName,
+        logo: finalLogo,
+        website: `https://${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+        description: `Campus recruitment hiring partner: ${companyName}.`,
+        industry: 'Technology',
+        location: 'Bengaluru / Hybrid',
+        tier: 'Super Dream (Tier 1)',
+        activeJobsCount: 1,
+        placedStudentsCount: 0,
+        averagePackage: '₹20 LPA',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      this.companiesSignal.update(list => [targetCompany, ...list]);
+    }
+
+    this.saveCompaniesToCache(this.companiesSignal());
+
+    if (this.supabase.isConfigured && client) {
+      try {
+        // Query remote database by name (case-insensitive) or existing UUID
+        let remoteQuery = client.from('companies').select('id, name');
+        if (existing && !existing.id.startsWith('c-')) {
+          remoteQuery = remoteQuery.or(`id.eq.${existing.id},name.ilike.${companyName.trim()}`);
+        } else {
+          remoteQuery = remoteQuery.ilike('name', companyName.trim());
+        }
+
+        const { data: remoteRows } = await remoteQuery.limit(1);
+        const remoteComp = remoteRows && remoteRows.length > 0 ? remoteRows[0] : null;
+
+        if (remoteComp) {
+          const { error: updErr } = await client
+            .from('companies')
+            .update({ logo: finalLogo, updated_at: new Date().toISOString() })
+            .eq('id', remoteComp.id);
+
+          if (!updErr) {
+            targetCompany.id = remoteComp.id;
+            this.companiesSignal.update(list =>
+              list.map(c => c.name.toLowerCase().trim() === companyName.toLowerCase().trim() ? { ...c, id: remoteComp.id } : c)
+            );
+            this.saveCompaniesToCache(this.companiesSignal());
+          }
+        } else {
+          // Company doesn't exist on remote Supabase yet, insert it
+          const { data: inserted, error: insErr } = await client
+            .from('companies')
+            .insert({
+              name: targetCompany.name,
+              logo: targetCompany.logo,
+              website: targetCompany.website,
+              description: targetCompany.description,
+              industry: targetCompany.industry,
+              location: targetCompany.location,
+              tier: targetCompany.tier,
+              active_jobs_count: targetCompany.activeJobsCount,
+              placed_students_count: targetCompany.placedStudentsCount,
+              average_package: targetCompany.averagePackage
+            })
+            .select()
+            .single();
+
+          if (!insErr && inserted) {
+            targetCompany.id = inserted.id;
+            this.companiesSignal.update(list =>
+              list.map(c => c.name.toLowerCase().trim() === companyName.toLowerCase().trim() ? { ...c, id: inserted.id } : c)
+            );
+            this.saveCompaniesToCache(this.companiesSignal());
+          }
+        }
+      } catch (err) {
+        console.warn('Database error persisting company logo:', err);
+      }
+    }
+
+    this.toast.success('Company Logo Saved', `Official logo for ${targetCompany.name} has been updated.`);
+    return targetCompany;
   }
 
   async addCompany(company: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>): Promise<Company> {

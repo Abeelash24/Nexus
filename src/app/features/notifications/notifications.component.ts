@@ -1,14 +1,14 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { NotificationService } from '../../core/services/notification.service';
 import { IconComponent } from '../../shared/icons/icon.component';
-import { BadgeComponent } from '../../shared/ui/badge.component';
+import { NotificationItem } from '../../core/models/notification.model';
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [CommonModule, RouterLink, IconComponent],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="space-y-6 animate-in fade-in duration-300">
       <!-- Header -->
@@ -81,9 +81,14 @@ import { BadgeComponent } from '../../shared/ui/badge.component';
               
               <div class="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
                 <span>{{ item.createdAt | date:'mediumDate' }}</span>
-                <a *ngIf="item.link" [routerLink]="item.link" class="font-semibold text-blue-600 hover:underline">
+                <button
+                  *ngIf="item.link"
+                  type="button"
+                  (click)="openNotification(item)"
+                  class="font-semibold text-blue-600 hover:underline hover:text-blue-700 transition-colors"
+                >
                   View Details →
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -103,9 +108,17 @@ import { BadgeComponent } from '../../shared/ui/badge.component';
 })
 export class NotificationsComponent {
   notificationService = inject(NotificationService);
+  private router = inject(Router);
 
   readonly tabs = ['All', 'Applications', 'Jobs', 'Messages', 'Announcements'];
   selectedTab = 'All';
+
+  openNotification(item: NotificationItem) {
+    this.notificationService.markAsRead(item.id);
+    if (item.link) {
+      this.router.navigateByUrl(item.link);
+    }
+  }
 
   filteredNotifications = computed(() => {
     let list = this.notificationService.notifications();

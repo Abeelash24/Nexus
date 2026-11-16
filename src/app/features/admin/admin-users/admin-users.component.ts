@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StudentService } from '../../../core/services/student.service';
 import { AlumniService } from '../../../core/services/alumni.service';
-import { AdminUserService, NewStudentForm, NewAlumniForm } from '../../../core/services/admin-user.service';
+import { AdminUserService, NewStudentForm, NewAlumniForm, AdminCreateUserForm, CreateUserResult } from '../../../core/services/admin-user.service';
 import { OrganizationService } from '../../../core/services/organization.service';
 import { JobService } from '../../../core/services/job.service';
 import { TaskService } from '../../../core/services/task.service';
@@ -54,6 +54,15 @@ type AdminTab = 'users' | 'students' | 'alumni' | 'import' | 'departments' | 'ba
           >
             <app-icon name="upload" [size]="16" customClass="text-blue-600"></app-icon>
             Bulk CSV Import
+          </button>
+          <button
+            *ngIf="activeTab() === 'users'"
+            type="button"
+            (click)="openCreateUserModal()"
+            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-500/20 transition-all hover:scale-[1.02] cursor-pointer"
+          >
+            <app-icon name="user-plus" [size]="16"></app-icon>
+            + Create User
           </button>
           <button
             *ngIf="activeTab() === 'students'"
@@ -3257,6 +3266,366 @@ type AdminTab = 'users' | 'students' | 'alumni' | 'import' | 'departments' | 'ba
           </div>
         </div>
       </div>
+
+      <!-- CREATE USER MODAL (With Credentials & Role Adaptive Fields) -->
+      <div *ngIf="showCreateUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 custom-scrollbar">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <span>Provision New User Account</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-semibold uppercase">{{ createUserForm.role }}</span>
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">Creates Supabase Auth credentials, public record, and role-specific workspace.</p>
+            </div>
+            <button type="button" (click)="closeCreateUserModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
+              <app-icon name="x" [size]="20"></app-icon>
+            </button>
+          </div>
+
+          <form (submit)="submitCreateUser($event)" class="space-y-4 text-xs">
+            <!-- Role Selection -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Select Account Role *</label>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  type="button"
+                  (click)="createUserForm.role = 'student'"
+                  class="p-2.5 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs"
+                  [ngClass]="createUserForm.role === 'student' ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-2xs' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
+                >
+                  🎓 Student
+                </button>
+                <button
+                  type="button"
+                  (click)="createUserForm.role = 'alumni'"
+                  class="p-2.5 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs"
+                  [ngClass]="createUserForm.role === 'alumni' ? 'border-purple-600 bg-purple-50 text-purple-900 shadow-2xs' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
+                >
+                  💼 Alumni
+                </button>
+                <button
+                  type="button"
+                  (click)="createUserForm.role = 'recruiter'"
+                  class="p-2.5 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs"
+                  [ngClass]="createUserForm.role === 'recruiter' ? 'border-indigo-600 bg-indigo-50 text-indigo-900 shadow-2xs' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
+                >
+                  🏢 Recruiter
+                </button>
+                <button
+                  type="button"
+                  (click)="createUserForm.role = 'admin'"
+                  class="p-2.5 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs"
+                  [ngClass]="createUserForm.role === 'admin' ? 'border-emerald-600 bg-emerald-50 text-emerald-900 shadow-2xs' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
+                >
+                  ⚡ Admin
+                </button>
+              </div>
+            </div>
+
+            <!-- Basic Info: Full Name & Email -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700">Full Name *</label>
+                <input
+                  type="text"
+                  [(ngModel)]="createUserForm.fullName"
+                  name="cuFullName"
+                  required
+                  placeholder="e.g. Aditi Sharma"
+                  class="w-full px-3.5 py-2.5 mt-1 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700">Email Address *</label>
+                <input
+                  type="email"
+                  [(ngModel)]="createUserForm.email"
+                  name="cuEmail"
+                  required
+                  placeholder="aditi.sharma@careernexus.com"
+                  class="w-full px-3.5 py-2.5 mt-1 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <!-- Phone & Initial Password -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700">Contact Phone</label>
+                <input
+                  type="tel"
+                  [(ngModel)]="createUserForm.phone"
+                  name="cuPhone"
+                  placeholder="+91 98765 43210"
+                  class="w-full px-3.5 py-2.5 mt-1 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 flex items-center justify-between">
+                  <span>Initial Password</span>
+                  <span class="text-[10px] text-slate-400 font-normal">Auto-generated if empty</span>
+                </label>
+                <input
+                  type="text"
+                  [(ngModel)]="createUserForm.password"
+                  name="cuPassword"
+                  placeholder="Leave blank for secure auto-generate"
+                  class="w-full px-3.5 py-2.5 mt-1 rounded-xl border border-slate-200 text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <!-- STUDENT-SPECIFIC FIELDS -->
+            <div *ngIf="createUserForm.role === 'student'" class="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-200/80 space-y-3">
+              <span class="text-[11px] font-bold text-blue-900 uppercase tracking-wider block">🎓 Student Profile Details</span>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-semibold text-blue-950">Roll Number / Student ID *</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="createUserForm.rollNumber"
+                    name="cuRoll"
+                    required
+                    placeholder="e.g. 23CS101"
+                    class="w-full px-3 py-2 mt-1 rounded-xl border border-blue-200 bg-white text-xs font-mono uppercase focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label class="block font-semibold text-blue-950">Academic Department</label>
+                  <select
+                    [(ngModel)]="createUserForm.department"
+                    name="cuDept"
+                    class="w-full px-3 py-2 mt-1 rounded-xl border border-blue-200 bg-white text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option *ngFor="let d of orgService.departments()" [value]="d.name">{{ d.name }} ({{ d.code }})</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="block font-semibold text-blue-950">Graduation Year</label>
+                  <input
+                    type="number"
+                    [(ngModel)]="createUserForm.graduationYear"
+                    name="cuGradYear"
+                    class="w-full px-3 py-2 mt-1 rounded-xl border border-blue-200 bg-white text-xs"
+                  />
+                </div>
+                <div>
+                  <label class="block font-semibold text-blue-950">CGPA</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    [(ngModel)]="createUserForm.cgpa"
+                    name="cuCgpa"
+                    class="w-full px-3 py-2 mt-1 rounded-xl border border-blue-200 bg-white text-xs"
+                  />
+                </div>
+                <div class="col-span-2 sm:col-span-1">
+                  <label class="block font-semibold text-blue-950">Preferred Domain</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="createUserForm.preferredDomain"
+                    name="cuPrefDomain"
+                    placeholder="Software Development"
+                    class="w-full px-3 py-2 mt-1 rounded-xl border border-blue-200 bg-white text-xs"
+                  />
+                </div>
+              </div>
+              <div>
+                <label class="block font-semibold text-blue-950">Technical Skills (Comma-separated)</label>
+                <input
+                  type="text"
+                  [(ngModel)]="createUserSkillsRaw"
+                  name="cuSkills"
+                  placeholder="Java, Python, SQL, React"
+                  class="w-full px-3 py-2 mt-1 rounded-xl border border-blue-200 bg-white text-xs"
+                />
+              </div>
+            </div>
+
+            <!-- ALUMNI-SPECIFIC FIELDS -->
+            <div *ngIf="createUserForm.role === 'alumni'" class="p-3.5 bg-purple-50/60 rounded-2xl border border-purple-200/80 space-y-3">
+              <span class="text-[11px] font-bold text-purple-900 uppercase tracking-wider block">💼 Alumni Mentor Profile</span>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-semibold text-purple-950">Company / Organization *</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="createUserForm.company"
+                    name="cuAlumComp"
+                    placeholder="e.g. Google, Microsoft, Amazon"
+                    class="w-full px-3 py-2 mt-1 rounded-xl border border-purple-200 bg-white text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label class="block font-semibold text-purple-950">Current Designation *</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="createUserForm.designation"
+                    name="cuAlumDesig"
+                    placeholder="e.g. Senior Software Engineer"
+                    class="w-full px-3 py-2 mt-1 rounded-xl border border-purple-200 bg-white text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-semibold text-purple-950">Graduation Year</label>
+                  <input
+                    type="number"
+                    [(ngModel)]="createUserForm.graduationYear"
+                    name="cuAlumGradYear"
+                    class="w-full px-3 py-2 mt-1 rounded-xl border border-purple-200 bg-white text-xs"
+                  />
+                </div>
+                <div>
+                  <label class="block font-semibold text-purple-950">Years of Experience</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    [(ngModel)]="createUserForm.experienceYears"
+                    name="cuAlumExp"
+                    class="w-full px-3 py-2 mt-1 rounded-xl border border-purple-200 bg-white text-xs"
+                  />
+                </div>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="createUserForm.availableForMentoring"
+                  name="cuAlumMentor"
+                  class="rounded text-purple-600 focus:ring-purple-500"
+                />
+                <span class="font-semibold text-purple-900 text-xs">Available for Student Mentorship & Career Guidance</span>
+              </label>
+            </div>
+
+            <!-- RECRUITER-SPECIFIC FIELDS -->
+            <div *ngIf="createUserForm.role === 'recruiter'" class="p-3.5 bg-indigo-50/60 rounded-2xl border border-indigo-200/80 space-y-3">
+              <span class="text-[11px] font-bold text-indigo-900 uppercase tracking-wider block">🏢 Corporate Recruiter Affiliation</span>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-semibold text-indigo-950">Corporate Partner Name *</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="createUserForm.recruiterCompany"
+                    name="cuRecComp"
+                    placeholder="e.g. Microsoft, Google, TCS"
+                    class="w-full px-3 py-2 mt-1 rounded-xl border border-indigo-200 bg-white text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label class="block font-semibold text-indigo-950">Designation / Role Title</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="createUserForm.recruiterDesignation"
+                    name="cuRecDesig"
+                    placeholder="e.g. Lead Technical Recruiter"
+                    class="w-full px-3 py-2 mt-1 rounded-xl border border-indigo-200 bg-white text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-4 flex items-center justify-end gap-2.5 border-t border-slate-100">
+              <button
+                type="button"
+                (click)="closeCreateUserModal()"
+                class="px-4 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                [disabled]="isCreatingUser"
+                class="px-5 py-2.5 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white shadow-md shadow-indigo-500/20 transition-all flex items-center gap-2 cursor-pointer text-xs"
+              >
+                <span *ngIf="isCreatingUser" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span>{{ isCreatingUser ? 'Provisioning Account...' : 'Provision User Account' }}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ONE-TIME CREDENTIALS DISPLAY MODAL -->
+      <div *ngIf="showCredentialsModal && generatedCredentials" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-200">
+          <div class="text-center space-y-1">
+            <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-bold">
+              ✓
+            </div>
+            <h3 class="text-lg font-black text-slate-900 tracking-tight">Account Provisioned Successfully</h3>
+            <p class="text-xs text-slate-500">Provide these temporary credentials to the user for immediate sign in.</p>
+          </div>
+
+          <!-- Credentials Box -->
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3 text-xs">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200/60">
+              <span class="text-slate-500 font-medium">User:</span>
+              <span class="font-bold text-slate-900">{{ generatedCredentials.fullName }}</span>
+            </div>
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200/60">
+              <span class="text-slate-500 font-medium">Assigned Role:</span>
+              <span class="px-2 py-0.5 rounded-full font-bold uppercase text-[10px] bg-indigo-100 text-indigo-800">{{ generatedCredentials.role }}</span>
+            </div>
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200/60">
+              <span class="text-slate-500 font-medium">Login Identifier:</span>
+              <span class="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">{{ generatedCredentials.loginIdentifier }}</span>
+            </div>
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200/60">
+              <span class="text-slate-500 font-medium">Email:</span>
+              <span class="font-mono text-slate-800">{{ generatedCredentials.email }}</span>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-slate-500 font-medium">Temporary Password:</span>
+              <div class="flex items-center gap-1.5">
+                <span class="font-mono font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 text-sm select-all">
+                  {{ generatedCredentials.temporaryPassword }}
+                </span>
+                <button
+                  type="button"
+                  (click)="copyPasswordToClipboard()"
+                  class="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                  title="Copy password"
+                >
+                  <app-icon name="copy" [size]="15"></app-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notice Alert -->
+          <div class="p-3 rounded-xl bg-amber-50 border border-amber-200/80 flex items-start gap-2.5 text-xs text-amber-900">
+            <app-icon name="alert-triangle" [size]="16" customClass="text-amber-600 shrink-0 mt-0.5"></app-icon>
+            <p class="leading-relaxed">
+              <strong>Notice:</strong> Copy or record these credentials now. For security reasons, temporary passwords are not retrievable after closing this window.
+            </p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              (click)="copyAllCredentials()"
+              class="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            >
+              <app-icon name="copy" [size]="14"></app-icon>
+              <span>Copy All Info</span>
+            </button>
+            <button
+              type="button"
+              (click)="closeCredentialsModal()"
+              class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition-all cursor-pointer text-center"
+            >
+              Done & Close
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   `
 })
@@ -3385,6 +3754,122 @@ export class AdminUsersComponent implements OnInit {
       await this.adminUserService.toggleUserStatus(user.id, targetStatus, `Admin ${actionText.toLowerCase()}d user.`);
       this.adminUserService.users.update(list => list.map(u => u.id === user.id ? { ...u, isActive: targetStatus, status: targetStatus ? 'active' : 'deactivated' } : u));
     }
+  }
+
+  // Create User Modal & Credentials State
+  showCreateUserModal = false;
+  showCredentialsModal = false;
+  isCreatingUser = false;
+  createUserSkillsRaw = 'Java, Python, SQL, React';
+  generatedCredentials: {
+    email: string;
+    temporaryPassword: string;
+    role: UserRole;
+    fullName: string;
+    loginIdentifier: string;
+  } | null = null;
+
+  createUserForm: AdminCreateUserForm = this.getDefaultCreateUserForm();
+
+  getDefaultCreateUserForm(): AdminCreateUserForm {
+    return {
+      fullName: '',
+      email: '',
+      role: 'student',
+      phone: '',
+      password: '',
+      rollNumber: '',
+      department: 'Computer Science & Engineering',
+      course: 'B.Tech',
+      graduationYear: 2027,
+      cgpa: 8.0,
+      preferredDomain: 'Software Development',
+      skills: ['Java', 'SQL'],
+      company: 'Corporate Partner',
+      designation: 'Software Engineer',
+      experienceYears: 2.0,
+      availableForMentoring: true,
+      recruiterCompany: 'Corporate Partner',
+      recruiterDesignation: 'Technical Recruiter'
+    };
+  }
+
+  openCreateUserModal() {
+    this.createUserForm = this.getDefaultCreateUserForm();
+    this.createUserSkillsRaw = 'Java, Python, SQL, React';
+    this.showCreateUserModal = true;
+  }
+
+  closeCreateUserModal() {
+    this.showCreateUserModal = false;
+  }
+
+  closeCredentialsModal() {
+    this.showCredentialsModal = false;
+    this.generatedCredentials = null;
+  }
+
+  async submitCreateUser(e: Event) {
+    e.preventDefault();
+    if (!this.createUserForm.fullName || !this.createUserForm.email) {
+      this.toast.error('Validation Error', 'Full name and email are mandatory.');
+      return;
+    }
+
+    if (this.createUserForm.role === 'student' && !this.createUserForm.rollNumber) {
+      this.toast.error('Validation Error', 'Roll number is required for student accounts.');
+      return;
+    }
+
+    this.isCreatingUser = true;
+
+    try {
+      const skills = this.createUserSkillsRaw
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => !!s);
+
+      const payload: AdminCreateUserForm = {
+        ...this.createUserForm,
+        skills: skills.length > 0 ? skills : ['Java', 'SQL']
+      };
+
+      const res = await this.adminUserService.createUserWithCredentials(payload);
+
+      if (res.success && res.credentials) {
+        this.generatedCredentials = res.credentials;
+        this.closeCreateUserModal();
+        this.showCredentialsModal = true;
+      } else {
+        this.toast.error('Creation Failed', res.error || 'Could not provision user account.');
+      }
+    } catch (err: any) {
+      this.toast.error('System Error', err?.message || 'Error creating user account.');
+    } finally {
+      this.isCreatingUser = false;
+    }
+  }
+
+  copyPasswordToClipboard() {
+    if (!this.generatedCredentials) return;
+    navigator.clipboard.writeText(this.generatedCredentials.temporaryPassword).then(() => {
+      this.toast.success('Copied', 'Temporary password copied to clipboard.');
+    });
+  }
+
+  copyAllCredentials() {
+    if (!this.generatedCredentials) return;
+    const text = `CareerNexus Account Credentials:
+Name: ${this.generatedCredentials.fullName}
+Role: ${this.generatedCredentials.role.toUpperCase()}
+Login Identifier: ${this.generatedCredentials.loginIdentifier}
+Email: ${this.generatedCredentials.email}
+Temporary Password: ${this.generatedCredentials.temporaryPassword}
+Login Portal: https://careernexus.com/login`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      this.toast.success('Copied', 'All user credentials copied to clipboard.');
+    });
   }
 
   // Student Filters & Search

@@ -1,8 +1,11 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { Application, ApplicationStatus } from '../models/application.model';
 import { Job } from '../models/job.model';
+import { PlacementDrive, DriveStatus } from '../models/placement-drive.model';
 import { ApplicationService } from './application.service';
 import { JobService } from './job.service';
+import { CompanyService } from './company.service';
+import { PlacementDriveService } from './placement-drive.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
 import { AuditLogService } from './audit-log.service';
@@ -13,25 +16,92 @@ import { AuditLogService } from './audit-log.service';
 export class RecruiterService {
   private applicationService = inject(ApplicationService);
   private jobService = inject(JobService);
+  private companyService = inject(CompanyService);
+  private placementDriveService = inject(PlacementDriveService);
   private authService = inject(AuthService);
   private toast = inject(ToastService);
   private auditLog = inject(AuditLogService);
 
-  // Recruiter's assigned company (Default demo company: 'Google')
-  recruiterCompanyName = signal<string>('Google');
+  // Loading & Error States
+  isLoading = signal<boolean>(false);
+  error = signal<string | null>(null);
+  isInitialized = signal<boolean>(false);
 
-  // Jobs belonging to this recruiter's company
-  recruiterJobs = computed(() => {
-    const compName = this.recruiterCompanyName().toLowerCase().trim();
-    return this.jobService.jobs().filter(j => j.companyName.toLowerCase().trim() === compName);
+  private lastLoadedUserId: string | null = null;
+  private loadPromise: Promise<void> | null = null;
+
+  constructor() {
+    effect(() => {
+      const user = this.authService.currentUser();
+      if (user && user.role === 'recruiter') {
+        if (user.id !== this.lastLoadedUserId) {
+          this.loadRecruiterData();
+        }
+      } else if (!user && this.lastLoadedUserId) {
+        this.resetState();
+      }
+    });
+  }
+
+  // Recruiter's assigned company (Dynamic from authenticated user profile, fallback 'Corporate Partner')
+  private customCompanyName = signal<string>('');
+  recruiterCompanyName = computed<string>(() => {
+    const user = this.authService.currentUser();
+    const comp = (user?.company || this.customCompanyName() || '').trim();
+    return comp || 'Corporate Partner';
   });
 
-  // Applications submitted to this recruiter's company
-  recruiterApplications = computed(() => {
+  setCompanyName(name: string) {
+    this.customCompanyName.set(name);
+  }
+
+  // Official Company Profile for this recruiter's company
+  companyProfile = computed(() => {
+    return this.companyService.getCompanyByName(this.recruiterCompanyName());
+  });
+
+  // Official Company Logo
+  companyLogo = computed(() => {
+    return this.companyProfile()?.logo || '';
+  });
+
+  // Placement Drives belonging to this recruiter's company or created by recruiter
+  recruiterDrives = computed<PlacementDrive[]>(() => {
     const compName = this.recruiterCompanyName().toLowerCase().trim();
-    return this.applicationService.applications().filter(
-      a => a.companyName.toLowerCase().trim() === compName
-    );
+    const currentUserId = this.authService.currentUser()?.id;
+
+    return this.placementDriveService.drives().filter(d => {
+      if (currentUserId && d.createdBy && d.createdBy === currentUserId) return true;
+      const dComp = (d.companyName || '').toLowerCase().trim();
+      return (compName && compName !== 'corporate partner') && 
+        (dComp === compName || dComp.includes(compName) || compName.includes(dComp));
+    });
+  });
+
+  // Jobs belonging to this recruiter's company or created by recruiter
+  recruiterJobs = computed<Job[]>(() => {
+    const compName = this.recruiterCompanyName().toLowerCase().trim();
+    const currentUserId = this.authService.currentUser()?.id;
+
+    return this.jobService.jobs().filter(j => {
+      if (currentUserId && j.createdBy && j.createdBy === currentUserId) return true;
+      const jComp = (j.companyName || '').toLowerCase().trim();
+      return (compName && compName !== 'corporate partner') &&
+        (jComp === compName || jComp.includes(compName) || compName.includes(jComp));
+    });
+  });
+
+  // Applications submitted to this recruiter's company or jobs
+  recruiterApplications = computed<Application[]>(() => {
+    const compName = this.recruiterCompanyName().toLowerCase().trim();
+    const recruiterJobIds = new Set(this.recruiterJobs().map(j => j.id));
+
+    return this.applicationService.applications().filter(a => {
+      if (a.jobId && recruiterJobIds.has(a.jobId)) return true;
+      const aComp = (a.companyName || '').toLowerCase().trim();
+      return (compName && compName !== 'corporate partner') &&
+        (aComp === compName || aComp.includes(compName) || compName.includes(aComp));
+    });
   });
 
   // Metrics
@@ -39,6 +109,121 @@ export class RecruiterService {
   shortlistedCount = computed(() => this.recruiterApplications().filter(a => a.status === 'Shortlisted').length);
   interviewCount = computed(() => this.recruiterApplications().filter(a => a.status === 'Technical Interview' || a.status === 'HR Interview' || a.status === 'Aptitude').length);
   selectedCount = computed(() => this.recruiterApplications().filter(a => a.status === 'Selected').length);
+
+  // Placement Drive Metrics
+  totalDrivesCount = computed(() => this.recruiterDrives().length);
+  publishedDrivesCount = computed(() => this.recruiterDrives().filter(d => d.status === 'Published' || d.status === 'Applications Open' || d.status === 'In Progress').length);
+  draftDrivesCount = computed(() => this.recruiterDrives().filter(d => d.status === 'Draft').length);
+  closedDrivesCount = computed(() => this.recruiterDrives().filter(d => d.status === 'Closed' || d.status === 'Completed' || d.status === 'Cancelled').length);
+  
+  // Job Metrics
+  totalJobsCount = computed(() => this.recruiterJobs().length);
+  activeJobsCount = computed(() => this.recruiterJobs().filter(j => j.status === 'Active').length);
+
+  /**
+   * Concurrently loads and refreshes recruiter jobs, drives, applications, and company data.
+   * Eliminates waterfall lag and serial roundtrips.
+   */
+  async loadRecruiterData(force = false): Promise<void> {
+    const currentId = this.authService.currentUser()?.id || null;
+    const userChanged = currentId !== this.lastLoadedUserId;
+
+    if (this.loadPromise && !force && !userChanged) {
+      return this.loadPromise;
+    }
+
+    this.lastLoadedUserId = currentId;
+    this.isLoading.set(true);
+    this.error.set(null);
+
+    this.loadPromise = (async () => {
+      try {
+        await Promise.all([
+          this.jobService.fetchJobsFromDatabase(),
+          this.placementDriveService.fetchDrivesFromSupabase(),
+          this.applicationService.fetchApplicationsFromDatabase(),
+          this.companyService.fetchCompaniesFromDatabase()
+        ]);
+        this.isInitialized.set(true);
+      } catch (err: any) {
+        console.warn('RecruiterService data load warning:', err);
+        this.error.set(err?.message || 'Failed to load recruiter data. Please check your connection.');
+      } finally {
+        this.isLoading.set(false);
+        this.loadPromise = null;
+      }
+    })();
+
+    return this.loadPromise;
+  }
+
+  resetState() {
+    this.customCompanyName.set('');
+    this.isLoading.set(false);
+    this.error.set(null);
+    this.isInitialized.set(false);
+    this.lastLoadedUserId = null;
+    this.loadPromise = null;
+  }
+
+  // --- COMPANY LOGO & PROFILE MANAGEMENT ---
+
+  async uploadCompanyLogo(file: File): Promise<{ url: string; error?: string }> {
+    return this.companyService.uploadCompanyLogo(file);
+  }
+
+  async updateCompanyLogo(logoUrl: string): Promise<void> {
+    const compName = this.recruiterCompanyName();
+    const updatedCompany = await this.companyService.updateCompanyLogo(compName, logoUrl);
+
+    // Propagate logo to local drives and jobs signals for instant UI synchronization
+    for (const drive of this.recruiterDrives()) {
+      await this.placementDriveService.updateDrive(drive.id, { companyLogo: logoUrl });
+    }
+    for (const job of this.recruiterJobs()) {
+      await this.jobService.updateJob(job.id, { companyLogo: logoUrl });
+    }
+  }
+
+  // --- PLACEMENT DRIVES MANAGEMENT ---
+
+  async uploadBannerImage(file: File): Promise<{ url: string; error?: string }> {
+    return this.placementDriveService.uploadBannerImage(file);
+  }
+
+  async createPlacementDrive(driveData: Partial<PlacementDrive>): Promise<PlacementDrive> {
+    const compName = this.recruiterCompanyName();
+    const existingCompany = this.companyProfile() || this.companyService.getCompanyByName(compName);
+    const resolvedLogo = this.companyLogo() || driveData.companyLogo || existingCompany?.logo || 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=150&auto=format&fit=crop&q=80';
+
+    const payload: Partial<PlacementDrive> = {
+      ...driveData,
+      companyName: compName,
+      companyId: driveData.companyId || existingCompany?.id || 'comp-default',
+      companyLogo: resolvedLogo
+    };
+
+    const created = await this.placementDriveService.createDrive(payload);
+    return created;
+  }
+
+  async updatePlacementDrive(id: string, updates: Partial<PlacementDrive>): Promise<void> {
+    await this.placementDriveService.updateDrive(id, updates);
+  }
+
+  async deletePlacementDrive(id: string): Promise<void> {
+    await this.placementDriveService.deleteDrive(id);
+  }
+
+  async publishPlacementDrive(id: string): Promise<void> {
+    await this.placementDriveService.publishDrive(id);
+  }
+
+  async closePlacementDrive(id: string): Promise<void> {
+    await this.placementDriveService.closeDrive(id);
+  }
+
+  // --- JOBS MANAGEMENT ---
 
   async createRecruiterJob(jobData: {
     title: string;
@@ -51,15 +236,20 @@ export class RecruiterService {
     applicationDeadline: string;
     vacancies: number;
     employmentType: 'Full Time' | 'Full Time + 6M Internship' | 'Internship' | 'Contract';
+    bannerUrl?: string;
   }): Promise<Job> {
-    const company = this.jobService.jobs().find(j => j.companyName.toLowerCase().trim() === this.recruiterCompanyName().toLowerCase().trim());
-    
+    const compName = this.recruiterCompanyName().toLowerCase().trim();
+    const existingJob = this.jobService.jobs().find(j => (j.companyName || '').toLowerCase().trim() === compName);
+    const existingCompany = this.companyService.companies().find(c => (c.name || '').toLowerCase().trim() === compName);
+    const currentUser = this.authService.currentUser();
+
     const newJob: Job = {
       id: `job-${Date.now()}`,
-      companyId: company?.companyId || 'c-01',
+      companyId: existingCompany?.id || existingJob?.companyId || 'c-01',
       companyName: this.recruiterCompanyName(),
-      companyLogo: company?.companyLogo || 'https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=128&auto=format&fit=crop&q=80',
+      companyLogo: existingCompany?.logo || existingJob?.companyLogo || 'https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=128&auto=format&fit=crop&q=80',
       companyLocation: jobData.location,
+      bannerUrl: jobData.bannerUrl || '',
       title: jobData.title,
       description: jobData.description,
       domain: jobData.domain,
@@ -73,11 +263,12 @@ export class RecruiterService {
       status: 'Active',
       vacancies: jobData.vacancies,
       applicantsCount: 0,
+      createdBy: currentUser?.id,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    await this.jobService.addJob(newJob);
+    const added = await this.jobService.addJob(newJob);
     
     await this.auditLog.logAction(
       'job_created',
@@ -87,8 +278,22 @@ export class RecruiterService {
     );
 
     this.toast.success('Job Drive Created! 🚀', `Opening for "${newJob.title}" is now active and visible to eligible students.`);
-    return newJob;
+    return added;
   }
+
+  async updateRecruiterJob(id: string, updates: Partial<Job>): Promise<void> {
+    await this.jobService.updateJob(id, updates);
+  }
+
+  async deleteRecruiterJob(id: string): Promise<void> {
+    await this.jobService.deleteJob(id);
+  }
+
+  async closeRecruiterJob(id: string): Promise<void> {
+    await this.jobService.closeJob(id);
+  }
+
+  // --- CANDIDATE EVALUATION & STAGES ---
 
   async updateCandidateStatus(
     applicationId: string,

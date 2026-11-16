@@ -7,6 +7,7 @@ import { ChatService } from '../../../core/services/chat.service';
 import { CallService } from '../../../core/services/call.service';
 import { BookmarkService } from '../../../core/services/bookmark.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Alumni, ConnectionStatus, ContactMethod } from '../../../core/models/alumni.model';
 import { IconComponent } from '../../../shared/icons/icon.component';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state.component';
@@ -617,10 +618,10 @@ import { EmptyStateComponent } from '../../../shared/ui/empty-state.component';
             <ng-container *ngIf="getConnectionStatus(selectedMentor()!) === 'accepted'">
               <button
                 (click)="messageMentor(selectedMentor()!)"
-                class="px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 shadow-xs"
+                class="px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 shadow-xs transition-colors"
               >
                 <app-icon name="message-square" [size]="14"></app-icon>
-                <span>Chat</span>
+                <span>Message Mentor</span>
               </button>
               <button
                 (click)="callMentor(selectedMentor()!, 'audio')"
@@ -636,6 +637,21 @@ import { EmptyStateComponent } from '../../../shared/ui/empty-state.component';
               >
                 <app-icon name="video" [size]="15"></app-icon>
               </button>
+            </ng-container>
+
+            <!-- If request pending -->
+            <ng-container *ngIf="getConnectionStatus(selectedMentor()!) === 'pending'">
+              <span class="px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-semibold text-xs flex items-center gap-1.5">
+                <app-icon name="clock" [size]="14"></app-icon>
+                <span>Request Sent (Pending)</span>
+              </span>
+            </ng-container>
+
+            <!-- If request rejected -->
+            <ng-container *ngIf="getConnectionStatus(selectedMentor()!) === 'rejected'">
+              <span class="px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 font-semibold text-xs flex items-center gap-1.5">
+                <span>Declined</span>
+              </span>
             </ng-container>
 
             <!-- If not connected -->
@@ -660,6 +676,7 @@ export class AlumniListComponent {
   callService = inject(CallService);
   bookmarkService = inject(BookmarkService);
   authService = inject(AuthService);
+  private toast = inject(ToastService);
   private router = inject(Router);
 
   // Search & Filter State
@@ -868,6 +885,16 @@ export class AlumniListComponent {
   }
 
   messageMentor(mentor: Alumni) {
+    const currentUserId = this.authService.currentUser()?.id;
+    if (!currentUserId || !mentor.userId) return;
+
+    if (this.getConnectionStatus(mentor) !== 'accepted') {
+      this.toast.warning('Connection Required', 'Direct messaging unlocks once your mentorship connection request is accepted.');
+      return;
+    }
+
+    const canonicalConvId = `conv-mentorship-${[currentUserId, mentor.userId].sort().join('_')}`;
+
     this.chatService.startConversationWith({
       id: mentor.userId,
       name: mentor.fullName,
@@ -875,16 +902,25 @@ export class AlumniListComponent {
       role: 'alumni',
       headline: `${mentor.designation} @ ${mentor.company}`
     });
-    this.router.navigate(['/student/messages']);
+
+    this.showProfileModal.set(false);
+    this.router.navigate(['/student/chat'], { queryParams: { conversationId: canonicalConvId } });
   }
 
   callMentor(mentor: Alumni, type: 'audio' | 'video') {
-    this.callService.startCall({
-      id: mentor.userId,
-      name: mentor.fullName,
-      avatar: mentor.profilePhoto,
-      role: 'alumni'
-    }, type);
+    if (this.getConnectionStatus(mentor) !== 'accepted') {
+      this.toast.warning('Connection Required', 'Voice and video calling unlock once your mentorship connection request is accepted.');
+      return;
+    }
+
+    this.showProfileModal.set(false);
+    this.router.navigate(['/student/calls'], {
+      queryParams: {
+        peerId: mentor.userId,
+        initiate: 'true',
+        callType: type
+      }
+    });
   }
 
   onImgError(event: Event, name: string) {

@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { User, UserRole } from '../models/user.model';
 import { SupabaseService } from './supabase.service';
 import { ToastService } from './toast.service';
@@ -13,12 +14,19 @@ export class AuthService {
   private supabase = inject(SupabaseService);
 
   private readonly STORAGE_KEY = 'placementconnect_user';
+  private readonly WORKSPACE_ROLE_KEY = 'placementconnect_workspace_role';
 
   // State signals - Each authenticated account has ONE actual authorized role
   currentUser = signal<User | null>(null);
   isLoading = signal<boolean>(false);
   lastAuthError = signal<string>('');
   emailConfirmationPending = signal<string | null>(null);
+
+  // Workspace role for UI/workspace viewing (separate from authoritative database role)
+  workspaceRole = signal<UserRole | null>(null);
+
+  // Active route tracking signal
+  currentRoute = signal<string>('');
 
   // Computed authentication signals
   isAuthenticated = computed(() => !!this.currentUser());
@@ -35,13 +43,66 @@ export class AuthService {
     return 'student';
   });
 
+  // Dynamically resolved UI/portal role based on:
+  // 1. Active route prefix (/admin, /recruiter, /alumni, /student)
+  // 2. workspaceRole if explicitly set
+  // 3. actualRole (authoritative authenticated database role)
+  // 4. Default 'student'
+  activeRole = computed<UserRole>(() => {
+    const route = (this.currentRoute() || '').toLowerCase();
+    if (route.startsWith('/admin')) return 'admin';
+    if (route.startsWith('/recruiter')) return 'recruiter';
+    if (route.startsWith('/alumni')) return 'alumni';
+    if (route.startsWith('/student')) return 'student';
+
+    const wsRole = this.workspaceRole();
+    if (wsRole && ['admin', 'recruiter', 'alumni', 'student'].includes(wsRole)) {
+      return wsRole;
+    }
+
+    return this.actualRole();
+  });
+
   isStudent = computed(() => this.actualRole() === 'student');
   isAlumni = computed(() => this.actualRole() === 'alumni');
   isRecruiter = computed(() => this.actualRole() === 'recruiter');
   isAdmin = computed(() => this.actualRole() === 'admin');
 
   constructor() {
+    // 1. Initialize active route tracking
+    const initialUrl = this.router.url || (typeof window !== 'undefined' ? window.location.pathname : '');
+    this.currentRoute.set(initialUrl);
+
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd)
+    ).subscribe((e) => {
+      this.currentRoute.set(e.urlAfterRedirects || e.url);
+    });
+
+    // 2. Restore workspaceRole from sessionStorage if present
+    try {
+      const savedWs = sessionStorage.getItem(this.WORKSPACE_ROLE_KEY) as UserRole | null;
+      if (savedWs && ['student', 'alumni', 'recruiter', 'admin'].includes(savedWs)) {
+        this.workspaceRole.set(savedWs);
+      }
+    } catch {
+      // ignore storage access errors
+    }
+
     this.initAuth();
+  }
+
+  setWorkspaceRole(role: UserRole | null) {
+    this.workspaceRole.set(role);
+    try {
+      if (role) {
+        sessionStorage.setItem(this.WORKSPACE_ROLE_KEY, role);
+      } else {
+        sessionStorage.removeItem(this.WORKSPACE_ROLE_KEY);
+      }
+    } catch {
+      // ignore
+    }
   }
 
   private async initAuth() {
@@ -97,6 +158,11 @@ export class AuthService {
     let role: UserRole = (authUser.user_metadata?.['role'] as UserRole) || 'student';
     let fullName: string = authUser.user_metadata?.['full_name'] || authUser.email?.split('@')[0] || 'Placement User';
     let avatarUrl: string = authUser.user_metadata?.['avatar_url'] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+    let phone: string | undefined;
+    let department: string | undefined;
+    let company: string | undefined;
+    let designation: string | undefined;
+    let rollNumber: string | undefined;
     let isActive: boolean = true;
     let status: string = 'active';
 
@@ -105,7 +171,7 @@ export class AuthService {
       try {
         const { data, error } = await client
           .from('users')
-          .select('id, email, full_name, role, avatar_url, phone, status, is_active, created_at')
+          .select('id, email, full_name, role, avatar_url, phone, status, is_active, department, company, designation, roll_number, created_at')
           .eq('id', authUser.id)
           .maybeSingle();
 
@@ -118,11 +184,57 @@ export class AuthService {
             return;
           }
 
-          role = data.role as UserRole;
+          role = (data.role as UserRole) || role;
           fullName = data.full_name || fullName;
           avatarUrl = data.avatar_url || avatarUrl;
+          phone = data.phone || authUser.user_metadata?.['phone'] || phone;
+          department = data.department || authUser.user_metadata?.['department'] || department;
+          company = data.company || authUser.user_metadata?.['company'] || company;
+          designation = data.designation || authUser.user_metadata?.['designation'] || designation;
+          rollNumber = data.roll_number || authUser.user_metadata?.['roll_number'] || rollNumber;
           isActive = data.is_active ?? true;
           status = data.status || 'active';
+
+          // For recruiters: if company is known from metadata but not yet stored in public.users, backfill it
+          if (role === 'recruiter' && company && !data.company) {
+            try {
+              await client.from('users').update({
+                company: company,
+                designation: designation || 'Talent Acquisition'
+              }).eq('id', authUser.id);
+            } catch (err) {
+              console.warn('Could not sync recruiter company to public.users:', err);
+            }
+          }
+        } else {
+          company = authUser.user_metadata?.['company'] || company;
+          designation = authUser.user_metadata?.['designation'] || designation;
+          department = authUser.user_metadata?.['department'] || department;
+          phone = authUser.user_metadata?.['phone'] || phone;
+        }
+
+        // Secondary lookup in role-specific profile tables if affiliation fields were missing
+        if (role === 'student' && (!rollNumber || !department)) {
+          const { data: sRow } = await client
+            .from('students')
+            .select('roll_number, department')
+            .eq('user_id', authUser.id)
+            .maybeSingle();
+          if (sRow) {
+            rollNumber = rollNumber || sRow.roll_number;
+            department = department || sRow.department;
+          }
+        } else if (role === 'alumni' && (!company || !designation)) {
+          const { data: aRow } = await client
+            .from('alumni')
+            .select('company, designation, department')
+            .eq('user_id', authUser.id)
+            .maybeSingle();
+          if (aRow) {
+            company = company || aRow.company;
+            designation = designation || aRow.designation;
+            department = department || aRow.department;
+          }
         }
       } catch (e) {
         console.warn('Could not query public.users table during sync:', e);
@@ -136,6 +248,11 @@ export class AuthService {
       role: role,
       fullName: fullName,
       avatarUrl: avatarUrl,
+      phone: phone,
+      department: department,
+      company: company,
+      designation: designation,
+      rollNumber: rollNumber,
       isActive: isActive,
       status: status as any,
       createdAt: authUser.created_at || new Date().toISOString()
@@ -167,9 +284,12 @@ export class AuthService {
 
   private clearUserSession() {
     this.currentUser.set(null);
+    this.workspaceRole.set(null);
     try {
       localStorage.removeItem(this.STORAGE_KEY);
-      sessionStorage.removeItem('placementconnect_workspace_role');
+      sessionStorage.removeItem(this.WORKSPACE_ROLE_KEY);
+      localStorage.removeItem('placementconnect_jobs_cache');
+      localStorage.removeItem('placementconnect_applications_cache');
     } catch {
       // ignore
     }
@@ -209,22 +329,33 @@ export class AuthService {
     try {
       let targetEmail = identifier;
 
-      // If user provided a username without '@', resolve to full email
+      // If user provided a username or roll number without '@', resolve to full email
       if (!identifier.includes('@')) {
         const client = this.supabase.getClient();
         if (client) {
           try {
-            const { data: userRow } = await client
-              .from('users')
+            // First check if identifier matches a student roll_number
+            const { data: studentRow } = await client
+              .from('students')
               .select('email')
-              .ilike('email', `${identifier}@%`)
+              .ilike('roll_number', identifier)
               .maybeSingle();
 
-            if (userRow?.email) {
-              targetEmail = userRow.email;
+            if (studentRow?.email) {
+              targetEmail = studentRow.email;
             } else {
-              // Default to @careernexus.com domain for standard usernames
-              targetEmail = `${identifier}@careernexus.com`;
+              const { data: userRow } = await client
+                .from('users')
+                .select('email')
+                .ilike('email', `${identifier}@%`)
+                .maybeSingle();
+
+              if (userRow?.email) {
+                targetEmail = userRow.email;
+              } else {
+                // Default to @careernexus.com domain for standard usernames
+                targetEmail = `${identifier}@careernexus.com`;
+              }
             }
           } catch {
             targetEmail = `${identifier}@careernexus.com`;
@@ -248,43 +379,18 @@ export class AuthService {
         return false;
       }
 
-      const authUserId = data.user.id;
+      // 2. Synchronize user state with database profile (validates active status)
+      await this.syncSupabaseUser(data.user);
 
-      // 2. Fetch the actual database profile & role using authenticated UUID
-      const client = this.supabase.getClient();
-      let dbUser: any = null;
-      if (client) {
-        const { data: profileData, error: profileErr } = await client
-          .from('users')
-          .select('id, email, full_name, role, avatar_url, phone, status, is_active')
-          .eq('id', authUserId)
-          .maybeSingle();
-
-        if (!profileErr && profileData) {
-          dbUser = profileData;
-        }
-      }
-
-      // Check account active status
-      if (dbUser && (dbUser.is_active === false || dbUser.status === 'deactivated')) {
-        await this.supabase.auth.signOut();
-        this.clearUserSession();
+      const currentUser = this.currentUser();
+      if (!currentUser) {
         this.isLoading.set(false);
-        const msg = 'Your account has been deactivated. Please contact your system administrator.';
-        this.lastAuthError.set(msg);
-        this.toast.error('Account Deactivated', msg);
         return false;
       }
 
-      // 3. Database role is the single source of truth (Never infer from email or username)
-      const actualRole: UserRole = (dbUser?.role as UserRole) || (data.user.user_metadata?.['role'] as UserRole) || 'student';
-
-      // 4. Synchronize user state
-      await this.syncSupabaseUser(data.user);
-
       this.isLoading.set(false);
-      this.toast.success('Login Successful', `Welcome back, ${dbUser?.full_name || data.user.email}!`);
-      this.redirectByRole(actualRole);
+      this.toast.success('Login Successful', `Welcome back, ${currentUser.fullName || data.user.email}!`);
+      this.redirectByRole(currentUser.role);
       return true;
     } catch (err: any) {
       this.isLoading.set(false);

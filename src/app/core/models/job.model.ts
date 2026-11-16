@@ -20,6 +20,11 @@ export interface Job {
   vacancies: number;
   applicantsCount: number;
   hasApplied?: boolean;
+  bannerUrl?: string;
+  driveId?: string;
+  eligibleDepartments?: string[];
+  eligibleBatches?: string[];
+  createdBy?: string;
   createdAt: string;
   updatedAt: string;
 }

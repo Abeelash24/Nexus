@@ -22,30 +22,41 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
       </a>
 
       <!-- Header Card -->
-      <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div class="flex flex-col sm:flex-row sm:items-center gap-5">
-            <img
-              [src]="job()!.companyLogo"
-              [alt]="job()!.companyName"
-              (error)="onLogoError($event, job()!.companyName)"
-              class="w-20 h-20 rounded-2xl object-cover border border-slate-200 shadow-sm shrink-0"
-            />
-            <div>
-              <div class="flex flex-wrap items-center gap-2 mb-2">
-                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{{ job()!.title }}</h1>
-                <app-badge variant="primary">{{ job()!.employmentType }}</app-badge>
+      <div class="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <!-- Banner Hero Image if available -->
+        <div *ngIf="job()!.bannerUrl" class="h-48 sm:h-60 w-full overflow-hidden bg-slate-100 relative">
+          <img
+            [src]="job()!.bannerUrl"
+            [alt]="job()!.title"
+            (error)="onBannerError($event)"
+            class="w-full h-full object-cover"
+          />
+        </div>
+
+        <div class="p-6 sm:p-8">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-5">
+              <img
+                [src]="job()!.companyLogo"
+                [alt]="job()!.companyName"
+                (error)="onLogoError($event, job()!.companyName)"
+                class="w-20 h-20 rounded-2xl object-cover border border-slate-200 shadow-sm shrink-0"
+              />
+              <div>
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                  <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{{ job()!.title }}</h1>
+                  <app-badge variant="primary">{{ job()!.employmentType }}</app-badge>
+                </div>
+                <p class="text-sm font-semibold text-slate-600 flex items-center gap-2">
+                  {{ job()!.companyName }}
+                  <span>•</span>
+                  <span class="flex items-center gap-1 text-slate-500">
+                    <app-icon name="map-pin" [size]="14"></app-icon>
+                    {{ job()!.location }}
+                  </span>
+                </p>
               </div>
-              <p class="text-sm font-semibold text-slate-600 flex items-center gap-2">
-                {{ job()!.companyName }}
-                <span>•</span>
-                <span class="flex items-center gap-1 text-slate-500">
-                  <app-icon name="map-pin" [size]="14"></app-icon>
-                  {{ job()!.location }}
-                </span>
-              </p>
             </div>
-          </div>
 
           <!-- CTA Controls -->
           <div class="flex flex-wrap items-center gap-3">
@@ -106,6 +117,7 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
             <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">Applicants</span>
             <span class="text-base font-bold text-slate-800 mt-0.5 block">{{ job()!.applicantsCount }} applied</span>
           </div>
+        </div>
         </div>
       </div>
 
@@ -234,6 +246,11 @@ export class JobDetailComponent implements OnInit {
     if (j) {
       this.applicationService.applyToJob(j.id);
     }
+  }
+
+  onBannerError(event: Event) {
+    const target = event.target as HTMLElement;
+    target.style.display = 'none';
   }
 
   onLogoError(event: Event, companyName?: string) {

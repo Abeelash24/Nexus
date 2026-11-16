@@ -79,7 +79,7 @@ import { EmptyStateComponent } from '../../../shared/ui/empty-state.component';
             <div class="flex items-start justify-between gap-3 mb-4">
               <div class="flex items-center gap-3">
                 <img
-                  [src]="comp.logo"
+                  [src]="comp.logo || ('https://ui-avatars.com/api/?name=' + comp.name + '&background=0284c7&color=fff&bold=true')"
                   [alt]="comp.name"
                   (error)="onLogoError($event, comp.name)"
                   class="w-14 h-14 rounded-2xl object-cover border border-slate-200 shadow-xs shrink-0"
@@ -88,7 +88,20 @@ import { EmptyStateComponent } from '../../../shared/ui/empty-state.component';
                   <h3 class="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                     {{ comp.name }}
                   </h3>
-                  <span class="text-xs text-slate-500 font-medium">{{ comp.industry }}</span>
+                  <div class="flex flex-wrap items-center gap-2 mt-0.5">
+                    <span class="text-xs text-slate-500 font-medium">{{ comp.industry }}</span>
+                    <a
+                      *ngIf="comp.website"
+                      [href]="comp.website"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                      title="Visit official careers portal"
+                    >
+                      Careers
+                      <app-icon name="external-link" [size]="10"></app-icon>
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -138,9 +151,11 @@ import { EmptyStateComponent } from '../../../shared/ui/empty-state.component';
               View Drives ({{ comp.activeJobsCount || 2 }})
             </a>
             <a
+              *ngIf="comp.website"
               [href]="comp.website"
               target="_blank"
-              class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+              rel="noopener noreferrer"
+              class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-blue-600 transition-colors"
               title="Official Career Portal"
             >
               <app-icon name="external-link" [size]="16"></app-icon>

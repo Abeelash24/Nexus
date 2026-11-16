@@ -97,6 +97,8 @@ export class JobService {
       companyName: row.company_name || 'Hiring Partner',
       companyLogo: row.company_logo || 'https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=128&auto=format&fit=crop&q=80',
       companyLocation: row.company_location || row.location || 'Bengaluru',
+      bannerUrl: row.banner_url || '',
+      driveId: row.drive_id || undefined,
       title: row.title,
       description: row.description || '',
       responsibilities: row.responsibilities || [],
@@ -106,12 +108,15 @@ export class JobService {
       employmentType: row.employment_type || 'Full Time',
       salary: row.salary || '₹18 - ₹24 LPA',
       eligibility: row.eligibility || 'B.Tech with minimum 7.0 CGPA',
+      eligibleDepartments: row.eligible_departments || ['Computer Science & Engineering', 'Information Technology'],
+      eligibleBatches: row.eligible_batches || ['2026', '2027'],
       minimumCgpa: Number(row.minimum_cgpa) || 7.0,
       requiredSkills: row.required_skills || ['Java', 'DSA'],
       applicationDeadline: row.application_deadline || new Date(Date.now() + 14 * 86400000).toISOString(),
       status: row.status || 'Active',
       vacancies: row.vacancies || 5,
       applicantsCount: row.applicants_count || 0,
+      createdBy: row.created_by || undefined,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
@@ -137,6 +142,7 @@ export class JobService {
     const client = this.supabase.getClient();
     if (this.supabase.isConfigured && client) {
       try {
+        const currentUser = (await client.auth.getUser())?.data?.user;
         const { data, error } = await client
           .from('jobs')
           .insert({
@@ -144,6 +150,8 @@ export class JobService {
             company_name: jobData.companyName,
             company_logo: jobData.companyLogo,
             company_location: jobData.companyLocation,
+            banner_url: jobData.bannerUrl || '',
+            drive_id: jobData.driveId || null,
             title: jobData.title,
             description: jobData.description,
             responsibilities: jobData.responsibilities || [],
@@ -153,12 +161,15 @@ export class JobService {
             employment_type: jobData.employmentType,
             salary: jobData.salary,
             eligibility: jobData.eligibility,
+            eligible_departments: jobData.eligibleDepartments || ['Computer Science & Engineering', 'Information Technology'],
+            eligible_batches: jobData.eligibleBatches || ['2026', '2027'],
             minimum_cgpa: jobData.minimumCgpa,
             required_skills: jobData.requiredSkills,
             application_deadline: jobData.applicationDeadline,
             status: jobData.status,
             vacancies: jobData.vacancies,
-            applicants_count: 0
+            applicants_count: 0,
+            created_by: currentUser?.id
           })
           .select()
           .single();
@@ -186,14 +197,20 @@ export class JobService {
     this.saveJobsToCache(this.jobsSignal());
 
     const client = this.supabase.getClient();
-    if (this.supabase.isConfigured && client) {
+    if (this.supabase.isConfigured && client && !id.startsWith('j-')) {
       try {
         const payload: any = {};
         if (updates.title) payload.title = updates.title;
         if (updates.description) payload.description = updates.description;
         if (updates.salary) payload.salary = updates.salary;
+        if (updates.location) payload.location = updates.location;
+        if (updates.domain) payload.domain = updates.domain;
+        if (updates.employmentType) payload.employment_type = updates.employmentType;
+        if (updates.bannerUrl !== undefined) payload.banner_url = updates.bannerUrl;
         if (updates.minimumCgpa) payload.minimum_cgpa = updates.minimumCgpa;
         if (updates.requiredSkills) payload.required_skills = updates.requiredSkills;
+        if (updates.eligibleDepartments) payload.eligible_departments = updates.eligibleDepartments;
+        if (updates.eligibleBatches) payload.eligible_batches = updates.eligibleBatches;
         if (updates.status) payload.status = updates.status;
         payload.updated_at = new Date().toISOString();
 
@@ -204,6 +221,23 @@ export class JobService {
     }
 
     this.toast.success('Job Updated', 'Opening details saved.');
+  }
+
+  async deleteJob(id: string) {
+    const job = this.jobsSignal().find(j => j.id === id);
+    this.jobsSignal.update(list => list.filter(j => j.id !== id));
+    this.saveJobsToCache(this.jobsSignal());
+
+    const client = this.supabase.getClient();
+    if (this.supabase.isConfigured && client && !id.startsWith('j-')) {
+      try {
+        await client.from('jobs').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Delete job DB error:', err);
+      }
+    }
+
+    this.toast.info('Job Removed', `${job?.title || 'Job'} has been removed.`);
   }
 
   async closeJob(id: string) {

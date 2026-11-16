@@ -6,6 +6,7 @@ import { AlumniService } from '../../../core/services/alumni.service';
 import { StudentService } from '../../../core/services/student.service';
 import { ChatService } from '../../../core/services/chat.service';
 import { CallService } from '../../../core/services/call.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { ContactVisibility, ContactMethod } from '../../../core/models/alumni.model';
 import { IconComponent } from '../../../shared/icons/icon.component';
 import { StatCardComponent } from '../../../shared/ui/stat-card.component';
@@ -402,6 +403,7 @@ export class AlumniDashboardComponent {
   studentService = inject(StudentService);
   chatService = inject(ChatService);
   callService = inject(CallService);
+  authService = inject(AuthService);
   private router = inject(Router);
 
   showContactSettings = signal<boolean>(false);
@@ -431,23 +433,34 @@ export class AlumniDashboardComponent {
   }
 
   chatWithRequester(conn: any) {
+    const currentUserId = this.authService.currentUser()?.id;
+    if (!currentUserId) return;
+
+    const studentUserId = conn.requesterId === currentUserId ? conn.receiverId : conn.requesterId;
+    const studentName = conn.requesterId === currentUserId ? conn.receiverName : conn.requesterName;
+    const studentAvatar = conn.requesterId === currentUserId ? conn.receiverAvatar : conn.requesterAvatar;
+
+    const canonicalConvId = `conv-mentorship-${[currentUserId, studentUserId].sort().join('_')}`;
+
     this.chatService.startConversationWith({
-      id: conn.requesterId,
-      name: conn.requesterName || 'Student',
-      avatar: conn.requesterAvatar,
+      id: studentUserId,
+      name: studentName || 'Student Mentee',
+      avatar: studentAvatar,
       role: 'student',
       headline: `${conn.requesterDepartment || 'Candidate'} (Mentee)`
     });
-    this.router.navigate(['/alumni/messages']);
+
+    this.router.navigate(['/alumni/chat'], { queryParams: { conversationId: canonicalConvId } });
   }
 
   callRequester(conn: any, type: 'audio' | 'video') {
-    this.callService.startCall({
-      id: conn.requesterId,
-      name: conn.requesterName || 'Student',
-      avatar: conn.requesterAvatar,
-      role: 'student'
-    }, type);
+    this.router.navigate(['/alumni/calls'], {
+      queryParams: {
+        peerId: conn.requesterId,
+        initiate: 'true',
+        callType: type
+      }
+    });
   }
 
   saveContactSettings() {

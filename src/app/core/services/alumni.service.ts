@@ -68,34 +68,31 @@ export class AlumniService implements OnDestroy {
     return {
       id: `a-${user.id}`,
       userId: user.id,
-      alumniId: 'ALUM-2022-CSE042',
-      fullName: user.fullName,
+      alumniId: `ALUM-${new Date().getFullYear()}-${user.id.substring(0, 6)}`,
+      fullName: user.fullName || 'Alumni Member',
       email: user.email,
       profilePhoto: user.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-      graduationYear: 2022,
-      department: 'Computer Science & Engineering',
-      company: 'Google',
+      graduationYear: 2024,
+      department: user.department || 'Computer Science & Engineering',
+      company: user.company || 'Corporate Partner',
       companyLogo: 'https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=128&auto=format&fit=crop&q=80',
-      designation: 'Senior Software Engineer (L5)',
-      experienceYears: 4.5,
-      skills: ['C++', 'Distributed Systems', 'Go', 'System Design', 'Algorithms'],
-      preferredDomains: ['Software Development', 'Backend Development', 'System Design'],
-      industry: 'Software & Cloud',
+      designation: user.designation || 'Software Engineer',
+      experienceYears: 2.0,
+      skills: ['System Design', 'Cloud Architecture', 'Distributed Systems'],
+      preferredDomains: ['Software Development', 'System Design'],
+      industry: 'Software & Technology',
       location: 'Bengaluru, India',
-      mentorshipTopics: ['System Design (HLD & LLD)', 'Distributed Systems Architecture', 'Campus Placement Prep'],
-      bio: 'Passionate about distributed storage and cloud infrastructure. Mentoring campus juniors for high-impact product engineering roles.',
-      linkedinUrl: 'https://www.linkedin.com/in/gaurav-sen-56b6a941/',
-      websiteUrl: 'https://interviewready.io',
+      mentorshipTopics: ['Career Guidance', 'System Design', 'Placement Prep'],
+      bio: `Alumni mentor at ${user.company || 'Corporate Partner'}. Mentoring campus students for technical and professional growth.`,
+      linkedinUrl: '',
+      websiteUrl: '',
       availableForMentoring: true,
       isVerified: true,
       verifiedAt: new Date().toISOString(),
       contactVisibility: 'connected_only',
-      contactMethods: [
-        { type: 'linkedin', label: 'LinkedIn', url: 'https://www.linkedin.com/in/gaurav-sen-56b6a941/', isVisible: true },
-        { type: 'website', label: 'Website', url: 'https://interviewready.io', isVisible: true }
-      ],
-      menteesCount: 28,
-      rating: 4.9,
+      contactMethods: [],
+      menteesCount: 0,
+      rating: 5.0,
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -363,6 +360,30 @@ export class AlumniService implements OnDestroy {
     } finally {
       this.isLoading.set(false);
     }
+  }
+
+  async loadAlumniForCurrentUser(): Promise<Alumni | null> {
+    const user = this.authService.currentUser();
+    if (!user) return null;
+    const client = this.supabase.getClient();
+    if (!this.supabase.isConfigured || !client) return null;
+
+    try {
+      const { data, error } = await client
+        .from('alumni')
+        .select('*')
+        .or(`user_id.eq.${user.id},email.ilike.${user.email}`)
+        .maybeSingle();
+
+      if (data && !error) {
+        const alum = this.mapDbRowToAlumni(data);
+        this.addAlumniDirectly(alum);
+        return alum;
+      }
+    } catch (err) {
+      console.warn('Could not load alumni for current user:', err);
+    }
+    return null;
   }
 
   private mapDbRowToAlumni(row: any): Alumni {

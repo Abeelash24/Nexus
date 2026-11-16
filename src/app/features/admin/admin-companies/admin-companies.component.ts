@@ -87,13 +87,26 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
               <tr *ngFor="let comp of filteredCompanies()" class="hover:bg-slate-50/50 transition-colors">
                 <td class="py-4 px-6">
                   <div class="flex items-center gap-3">
-                    <img [src]="comp.logo" class="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0" />
+                    <img
+                      [src]="comp.logo || ('https://ui-avatars.com/api/?name=' + comp.name + '&background=0284c7&color=fff&bold=true')"
+                      [alt]="comp.name"
+                      (error)="onLogoError($event, comp.name)"
+                      class="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
+                    />
                     <div>
                       <h4 class="text-xs font-bold text-slate-900">{{ comp.name }}</h4>
-                      <a [href]="comp.website" target="_blank" class="text-[11px] text-blue-600 hover:underline flex items-center gap-1">
+                      <a
+                        *ngIf="comp.website"
+                        [href]="comp.website"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-[11px] text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 font-medium"
+                        title="Open external careers portal"
+                      >
                         {{ comp.website }}
                         <app-icon name="external-link" [size]="10"></app-icon>
                       </a>
+                      <span *ngIf="!comp.website" class="text-[10px] text-slate-400 italic">No website configured</span>
                     </div>
                   </div>
                 </td>
@@ -262,5 +275,10 @@ export class AdminCompaniesComponent {
 
     this.newName = '';
     this.showAddCompanyModal.set(false);
+  }
+
+  onLogoError(event: Event, companyName?: string) {
+    const target = event.target as HTMLImageElement;
+    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(companyName || 'Company')}&background=0284c7&color=fff&bold=true`;
   }
 }

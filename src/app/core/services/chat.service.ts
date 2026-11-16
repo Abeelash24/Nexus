@@ -121,6 +121,17 @@ export class ChatService implements OnDestroy {
     }
   }
 
+  /**
+   * Cleans up the active conversation's Realtime channel subscription upon component unmount.
+   */
+  cleanupActiveConversation() {
+    if (this.activeConversationMessagesChannel) {
+      this.supabase.unsubscribe(this.activeConversationMessagesChannel);
+      this.activeConversationMessagesChannel = null;
+    }
+    this.activeConversationIdSignal.set('');
+  }
+
   private async reconnectRealtimeAndSync() {
     const activeId = this.activeConversationIdSignal();
     if (activeId) {
@@ -720,15 +731,19 @@ export class ChatService implements OnDestroy {
             )
           }));
 
-          // Notify strictly the recipient of this conversation
+          // Notify strictly the recipient of this conversation with role-aware deep link
           try {
+            const recipientDeepLink = activeConv.participantRole === 'alumni'
+              ? `/alumni/chat?conversationId=${convId}`
+              : (activeConv.participantRole === 'recruiter' ? `/recruiter/chat?conversationId=${convId}` : `/student/chat?conversationId=${convId}`);
+
             await this.notificationService.addNotification({
               userId: targetReceiverId,
               senderId: currentUser.id,
-              type: 'mentorship',
+              type: 'message',
               title: `New message from ${currentUser.fullName}`,
               message: text.length > 60 ? `${text.substring(0, 57)}...` : text,
-              link: activeConv.participantRole === 'alumni' ? '/alumni/messages' : (activeConv.participantRole === 'recruiter' ? '/recruiter/messages' : '/student/messages'),
+              link: recipientDeepLink,
               referenceType: 'mentorship_message',
               referenceId: convId
             });
@@ -753,13 +768,17 @@ export class ChatService implements OnDestroy {
         }));
 
         try {
+          const recipientDeepLink = activeConv.participantRole === 'alumni'
+            ? `/alumni/chat?conversationId=${convId}`
+            : `/student/chat?conversationId=${convId}`;
+
           await this.notificationService.addNotification({
             userId: activeConv.participantId,
             senderId: currentUser?.id,
-            type: 'mentorship',
+            type: 'message',
             title: `New message from ${currentUser?.fullName || 'Mentee'}`,
             message: text.length > 60 ? `${text.substring(0, 57)}...` : text,
-            link: activeConv.participantRole === 'alumni' ? '/student/messages' : '/alumni/messages',
+            link: recipientDeepLink,
             referenceType: 'mentorship_message',
             referenceId: convId
           });
@@ -952,6 +971,77 @@ export class ChatService implements OnDestroy {
     });
 
     return newConvId;
+  }
+
+  /**
+   * Opens a conversation by ID directly (e.g. from deep link query parameter).
+   * Resolves the conversation partner dynamically even if no messages exist yet.
+   */
+  async openConversationById(convId: string): Promise<boolean> {
+    if (!convId) return false;
+
+    // 1. Check if conversation already exists in memory
+    let match = this.conversationsSignal().find(c => c.id === convId);
+
+    // 2. If not found in memory, parse canonical mentorship conv ID: conv-mentorship-<uid1>_<uid2>
+    if (!match && convId.startsWith('conv-mentorship-')) {
+      const parts = convId.replace('conv-mentorship-', '').split('_');
+      const currentUser = this.authService.currentUser();
+      if (parts.length === 2 && currentUser) {
+        const otherId = parts[0] === currentUser.id ? parts[1] : parts[0];
+
+        const client = this.supabase.getClient();
+        let participantName = 'Mentorship Partner';
+        let participantAvatar: string | undefined;
+        let participantRole: 'student' | 'alumni' | 'recruiter' | 'admin' = 'alumni';
+        let participantHeadline = 'Mentorship Connection';
+
+        if (client) {
+          try {
+            const { data: userRow } = await client
+              .from('users')
+              .select('id, full_name, role, avatar_url, company, department')
+              .eq('id', otherId)
+              .maybeSingle();
+
+            if (userRow) {
+              participantName = userRow.full_name || participantName;
+              participantAvatar = userRow.avatar_url;
+              participantRole = (userRow.role as any) || participantRole;
+              participantHeadline = userRow.role === 'alumni'
+                ? (userRow.company ? `Mentor @ ${userRow.company}` : 'Alumni Mentor')
+                : (userRow.department ? `Student • ${userRow.department}` : 'Student Mentee');
+            }
+          } catch (fetchErr) {
+            console.warn('Could not fetch participant details for conversation:', fetchErr);
+          }
+        }
+
+        match = {
+          id: convId,
+          participantId: otherId,
+          participantName,
+          participantAvatar: participantAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(participantName)}&background=7c3aed&color=fff&bold=true`,
+          participantRole,
+          participantHeadline,
+          lastMessage: 'Mentorship connection active. Say hi!',
+          lastMessageTime: 'Just now',
+          unreadCount: 0,
+          isOnline: true,
+          updatedAt: new Date().toISOString()
+        };
+
+        this.conversationsSignal.update(list => [match!, ...list.filter(c => c.id !== convId)]);
+      }
+    }
+
+    if (match) {
+      await this.setActiveConversation(match.id);
+      return true;
+    } else {
+      await this.setActiveConversation(convId);
+      return true;
+    }
   }
 
   /**

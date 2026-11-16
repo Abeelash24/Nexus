@@ -1,6 +1,7 @@
 export type DriveStatus = 
   | 'Draft' 
   | 'Published' 
+  | 'Closed'
   | 'Applications Open' 
   | 'Applications Closed' 
   | 'Screening' 
@@ -50,18 +51,27 @@ export interface PlacementDrive {
   jobId?: string;
   companyName: string;
   companyLogo?: string;
+  bannerUrl?: string;
   title: string;
+  jobRole?: string;
   roleDesignation: string;
   description: string;
+  employmentType?: 'Full Time' | 'Full Time + 6M Internship' | 'Internship' | 'Contract';
+  location?: string;
+  eligibilityCriteria?: string;
   eligibleDepartments: string[];
+  eligibleBatches?: string[];
   minimumCgpa: number;
   maxBacklogs: number;
   requiredSkills: string[];
+  applicationStartDate?: string;
   applicationDeadline: string;
   driveDate: string;
   mode: 'Online' | 'On-Campus' | 'Hybrid';
   venue: string;
   salaryCtc: string;
+  selectionProcess?: string;
+  vacancies?: number;
   status: DriveStatus;
   currentRoundNumber: number;
   totalRounds: number;

@@ -25,6 +25,12 @@
     selection-background-color: #dbeafe;
     selection-color: #1e40af;
   }
+
+  html:has(.app-shell),
+  body:has(.app-shell) {
+    height: 100%;
+    overflow: hidden;
+  }
 }
 
 /* Custom modern utility classes */

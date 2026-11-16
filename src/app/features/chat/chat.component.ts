@@ -1,7 +1,8 @@
-import { Component, inject, signal, computed, ViewChild, ElementRef, effect } from '@angular/core';
+import { Component, inject, signal, computed, ViewChild, ElementRef, effect, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ChatService } from '../../core/services/chat.service';
 import { CallService } from '../../core/services/call.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -428,17 +429,19 @@ import { ChatMessage } from '../../core/models/message.model';
     </div>
   `
 })
-export class ChatComponent {
+export class ChatComponent implements OnDestroy {
   chatService = inject(ChatService);
   callService = inject(CallService);
   authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   @ViewChild('messagesContainer') messagesContainer?: ElementRef<HTMLDivElement>;
 
   searchQuery = '';
   newMessageText = '';
   mobileChatOpen = signal(false);
+  private querySub?: Subscription;
 
   portalRole = computed<'student' | 'alumni' | 'recruiter' | 'admin'>(() => {
     const url = this.router.url;
@@ -486,10 +489,33 @@ export class ChatComponent {
         setTimeout(() => this.scrollToBottom(), 50);
       }
     });
+
+    // Deep-link: react to query parameters whenever route changes or on init
+    this.querySub = this.route.queryParams.subscribe(async params => {
+      const convId = params['conversationId'];
+      if (convId) {
+        await this.chatService.openConversationById(convId);
+        this.mobileChatOpen.set(true);
+        setTimeout(() => this.scrollToBottom(), 100);
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.querySub) {
+      this.querySub.unsubscribe();
+    }
+    this.chatService.cleanupActiveConversation();
   }
 
   async initRoleChat() {
     await this.chatService.loadConversations(this.portalRole());
+    // Ensure any deep-linked conversation remains selected after initial conversation load
+    const convId = this.route.snapshot.queryParams['conversationId'];
+    if (convId) {
+      await this.chatService.openConversationById(convId);
+      this.mobileChatOpen.set(true);
+    }
   }
 
   selectConversation(convId: string) {
@@ -524,12 +550,15 @@ export class ChatComponent {
     const activeConv = this.chatService.activeConversation();
     if (!activeConv) return;
 
-    this.callService.startCall({
-      id: activeConv.participantId,
-      name: activeConv.participantName,
-      avatar: activeConv.participantAvatar,
-      role: activeConv.participantRole
-    }, type);
+    const currentRole = this.portalRole();
+    const targetRoute = currentRole === 'alumni' ? '/alumni/calls' : '/student/calls';
+    this.router.navigate([targetRoute], {
+      queryParams: {
+        peerId: activeConv.participantId,
+        initiate: 'true',
+        callType: type
+      }
+    });
   }
 
   private scrollToBottom() {

@@ -78,9 +78,62 @@ export class SupabaseService {
     return data.publicUrl;
   }
 
-  async createSignedUrl(bucket: string, path: string, expiresIn: number = 3600): Promise<string | null> {
-    if (!this.client) return null;
+  extractStoragePath(bucket: string, pathOrUrl: string): string {
+    if (!pathOrUrl) return '';
+    let cleaned = pathOrUrl.trim();
+
+    // Remove query params or hash if present
+    const queryIndex = cleaned.indexOf('?');
+    if (queryIndex !== -1) {
+      cleaned = cleaned.substring(0, queryIndex);
+    }
+    const hashIndex = cleaned.indexOf('#');
+    if (hashIndex !== -1) {
+      cleaned = cleaned.substring(0, hashIndex);
+    }
+
+    // Standard Supabase storage URL patterns
+    const patterns = [
+      `/storage/v1/object/public/${bucket}/`,
+      `/storage/v1/object/sign/${bucket}/`,
+      `/storage/v1/object/authenticated/${bucket}/`,
+      `/storage/v1/object/${bucket}/`
+    ];
+
+    for (const pat of patterns) {
+      const idx = cleaned.indexOf(pat);
+      if (idx !== -1) {
+        return decodeURIComponent(cleaned.substring(idx + pat.length));
+      }
+    }
+
+    // If string begins with '<bucket>/'
+    if (cleaned.startsWith(`${bucket}/`)) {
+      return cleaned.substring(bucket.length + 1);
+    }
+
+    // Generic URL parsing if bucket is a path segment
+    if (cleaned.startsWith('http://') || cleaned.startsWith('https://')) {
+      try {
+        const url = new URL(cleaned);
+        const parts = url.pathname.split('/');
+        const bucketIdx = parts.indexOf(bucket);
+        if (bucketIdx !== -1 && bucketIdx < parts.length - 1) {
+          return decodeURIComponent(parts.slice(bucketIdx + 1).join('/'));
+        }
+      } catch {
+        // ignore and fallback
+      }
+    }
+
+    return cleaned;
+  }
+
+  async createSignedUrl(bucket: string, pathOrUrl: string, expiresIn: number = 3600): Promise<string | null> {
+    if (!this.client || !pathOrUrl) return null;
     try {
+      const path = this.extractStoragePath(bucket, pathOrUrl);
+      if (!path) return null;
       const { data, error } = await this.client.storage.from(bucket).createSignedUrl(path, expiresIn);
       if (error) {
         console.error(`Error generating signed URL for ${bucket}/${path}:`, error);

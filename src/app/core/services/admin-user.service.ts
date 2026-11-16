@@ -1,4 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { createClient } from '@supabase/supabase-js';
+import { environment } from '../../../environments/environment';
 import { SupabaseService } from './supabase.service';
 import { StudentService } from './student.service';
 import { AlumniService } from './alumni.service';
@@ -18,6 +20,72 @@ export interface DuplicateCheckResult {
   hasDuplicate: boolean;
   duplicateField?: string;
   duplicateMessage?: string;
+}
+
+export interface AdminCreateUserForm {
+  email: string;
+  fullName: string;
+  role: UserRole;
+  password?: string;
+  phone?: string;
+  // Student fields
+  rollNumber?: string;
+  department?: string;
+  departmentId?: string;
+  programId?: string;
+  batchId?: string;
+  course?: string;
+  batch?: string;
+  graduationYear?: number;
+  cgpa?: number;
+  tenthPercentage?: number;
+  twelfthPercentage?: number;
+  skills?: string[];
+  preferredDomain?: string;
+  bio?: string;
+  // Alumni fields
+  alumniId?: string;
+  company?: string;
+  companyId?: string;
+  designation?: string;
+  experienceYears?: number;
+  availableForMentoring?: boolean;
+  // Recruiter fields
+  recruiterCompany?: string;
+  recruiterDesignation?: string;
+}
+
+export interface CreateUserResult {
+  success: boolean;
+  user?: User;
+  credentials?: {
+    email: string;
+    temporaryPassword: string;
+    role: UserRole;
+    fullName: string;
+    loginIdentifier: string;
+  };
+  error?: string;
+}
+
+export function generateSecureTemporaryPassword(): string {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%&*';
+
+  let pwd = '';
+  pwd += upper[Math.floor(Math.random() * upper.length)];
+  pwd += lower[Math.floor(Math.random() * lower.length)];
+  pwd += digits[Math.floor(Math.random() * digits.length)];
+  pwd += symbols[Math.floor(Math.random() * symbols.length)];
+
+  const all = upper + lower + digits + symbols;
+  for (let i = 0; i < 8; i++) {
+    pwd += all[Math.floor(Math.random() * all.length)];
+  }
+
+  return pwd.split('').sort(() => 0.5 - Math.random()).join('');
 }
 
 export interface NewStudentForm {
@@ -178,6 +246,308 @@ export class AdminUserService {
       rollNumberExists: false,
       alumniIdExists: false,
       hasDuplicate: false
+    };
+  }
+
+  // --- PERMANENT ADMIN USER PROVISIONING WITH CREDENTIALS ---
+  async createUserWithCredentials(form: AdminCreateUserForm): Promise<CreateUserResult> {
+    const cleanEmail = form.email.trim().toLowerCase();
+    const cleanName = form.fullName.trim();
+    const role = form.role;
+
+    if (!cleanEmail || !cleanName) {
+      return { success: false, error: 'Full name and email are mandatory.' };
+    }
+
+    // Check Duplicates across local signals & Supabase
+    const dup = await this.checkDuplicates(
+      cleanEmail,
+      role === 'student' ? form.rollNumber : undefined,
+      role === 'alumni' ? form.alumniId : undefined
+    );
+    if (dup.hasDuplicate) {
+      this.toast.error('Duplicate Detected', dup.duplicateMessage || 'User with these identifiers already exists.');
+      return { success: false, error: dup.duplicateMessage };
+    }
+
+    // Auto-generate temporary password if not provided
+    const tempPassword = form.password?.trim() || generateSecureTemporaryPassword();
+
+    let authUserId = `u-${Date.now()}`;
+    let authSucceeded = false;
+
+    // 1. Attempt Supabase Edge Function first
+    if (this.supabase.client) {
+      try {
+        const { data: edgeData, error: edgeErr } = await this.supabase.client.functions.invoke('admin-create-user', {
+          body: {
+            email: cleanEmail,
+            password: tempPassword,
+            fullName: cleanName,
+            role: role,
+            phone: form.phone || '',
+            department: form.department,
+            rollNumber: form.rollNumber,
+            company: form.company || form.recruiterCompany,
+            designation: form.designation || form.recruiterDesignation
+          }
+        });
+
+        if (!edgeErr && edgeData?.userId) {
+          authUserId = edgeData.userId;
+          authSucceeded = true;
+        }
+      } catch {
+        // Edge function unreached; fallback to ephemeral GoTrue client
+      }
+    }
+
+    // 2. Ephemeral GoTrue client fallback (never logs out active admin)
+    if (!authSucceeded) {
+      try {
+        const ephemeralClient = createClient(environment.supabaseUrl, environment.supabaseKey, {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: false
+          }
+        });
+
+        const { data: authData, error: authErr } = await ephemeralClient.auth.signUp({
+          email: cleanEmail,
+          password: tempPassword,
+          options: {
+            data: {
+              role: role,
+              full_name: cleanName,
+              company: form.company || form.recruiterCompany || '',
+              designation: form.designation || form.recruiterDesignation || '',
+              department: form.department || '',
+              phone: form.phone || ''
+            }
+          }
+        });
+
+        if (authErr) {
+          if (authErr.message.toLowerCase().includes('already registered')) {
+            this.toast.error('User Already Exists', `An authentication account with email ${cleanEmail} already exists.`);
+            return { success: false, error: authErr.message };
+          }
+          console.warn('Ephemeral client signUp note:', authErr.message);
+        }
+
+        if (authData?.user?.id) {
+          authUserId = authData.user.id;
+          authSucceeded = true;
+        }
+      } catch (err: any) {
+        console.warn('Ephemeral client signup exception:', err);
+      }
+    }
+
+    // 3. Upsert user record in public.users using admin client
+    if (this.supabase.client) {
+      try {
+        await this.supabase.client
+          .from('users')
+          .upsert({
+            id: authUserId,
+            email: cleanEmail,
+            full_name: cleanName,
+            role: role,
+            status: 'active',
+            is_active: true,
+            phone: form.phone || '',
+            company: form.company || form.recruiterCompany || '',
+            designation: form.designation || form.recruiterDesignation || '',
+            department: form.department || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'id' });
+      } catch (err) {
+        console.warn('Error inserting into public.users:', err);
+      }
+    }
+
+    // 4. Role-specific profile record creation
+    if (role === 'student') {
+      const cleanRoll = form.rollNumber?.trim().toUpperCase() || `26CS${Math.floor(Math.random() * 899 + 100)}`;
+      const gradYear = Number(form.graduationYear) || 2027;
+      const newStudent: Student = {
+        id: `s-${Date.now()}`,
+        userId: authUserId,
+        fullName: cleanName,
+        email: cleanEmail,
+        rollNumber: cleanRoll,
+        department: form.department || 'Computer Science & Engineering',
+        departmentId: form.departmentId && !form.departmentId.startsWith('d-') ? form.departmentId : undefined,
+        programId: form.programId && !form.programId.startsWith('p-') ? form.programId : undefined,
+        batchId: form.batchId && !form.batchId.startsWith('b-') ? form.batchId : undefined,
+        course: form.course || 'B.Tech',
+        batch: form.batch || `Batch ${gradYear - 4}-${gradYear}`,
+        graduationYear: gradYear,
+        phone: form.phone || '',
+        cgpa: Number(form.cgpa || 7.5),
+        tenthPercentage: Number(form.tenthPercentage || 85.0),
+        twelfthPercentage: Number(form.twelfthPercentage || 85.0),
+        skills: form.skills && form.skills.length > 0 ? form.skills : ['Java', 'SQL'],
+        preferredDomain: form.preferredDomain || 'Software Development',
+        bio: form.bio || '',
+        profilePhoto: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
+        githubUrl: '',
+        linkedinUrl: '',
+        portfolioUrl: '',
+        resumeUrl: '',
+        resumeFileName: '',
+        placementStatus: 'Not Placed',
+        profileCompletion: 70,
+        isActive: true,
+        projects: [],
+        certifications: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      if (this.supabase.client) {
+        try {
+          const sRes = await this.supabase.client.from('students').upsert({
+            user_id: authUserId,
+            full_name: newStudent.fullName,
+            email: newStudent.email,
+            roll_number: newStudent.rollNumber,
+            department: newStudent.department,
+            department_id: newStudent.departmentId || null,
+            course: newStudent.course,
+            batch: newStudent.batch,
+            graduation_year: newStudent.graduationYear,
+            phone: newStudent.phone,
+            cgpa: newStudent.cgpa,
+            tenth_percentage: newStudent.tenthPercentage,
+            twelfth_percentage: newStudent.twelfthPercentage,
+            skills: newStudent.skills,
+            preferred_domain: newStudent.preferredDomain,
+            bio: newStudent.bio,
+            placement_status: newStudent.placementStatus,
+            profile_completion: newStudent.profileCompletion,
+            is_active: true
+          }, { onConflict: 'user_id' }).select().single();
+
+          if (sRes.data) {
+            newStudent.id = sRes.data.id;
+          }
+        } catch (dbErr) {
+          console.warn('Supabase student insert notice:', dbErr);
+        }
+      }
+
+      this.studentService.addStudentDirectly(newStudent);
+    } else if (role === 'alumni') {
+      const alumYear = Number(form.graduationYear) || 2024;
+      const cleanAlumId = form.alumniId?.trim().toUpperCase() || `ALUM-${alumYear}-${Math.floor(Math.random() * 899 + 100)}`;
+      const newAlum: Alumni = {
+        id: `a-${Date.now()}`,
+        userId: authUserId,
+        alumniId: cleanAlumId,
+        fullName: cleanName,
+        email: cleanEmail,
+        phone: form.phone || '',
+        profilePhoto: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+        graduationYear: alumYear,
+        department: form.department || 'Computer Science & Engineering',
+        company: form.company || 'Corporate Partner',
+        designation: form.designation || 'Software Engineer',
+        experienceYears: Number(form.experienceYears || 2.0),
+        skills: form.skills && form.skills.length > 0 ? form.skills : ['System Design', 'Cloud'],
+        preferredDomains: [form.preferredDomain || 'Software Engineering'],
+        bio: form.bio || `Alumni mentor at ${form.company || 'Corporate Partner'}.`,
+        linkedinUrl: '',
+        githubUrl: '',
+        portfolioUrl: '',
+        contactPreference: 'Email & Chat',
+        availableForMentoring: form.availableForMentoring !== false,
+        menteesCount: 0,
+        rating: 5.0,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      if (this.supabase.client) {
+        try {
+          const aRes = await this.supabase.client.from('alumni').upsert({
+            user_id: authUserId,
+            alumni_id: newAlum.alumniId,
+            full_name: newAlum.fullName,
+            email: newAlum.email,
+            phone: newAlum.phone,
+            graduation_year: newAlum.graduationYear,
+            department: newAlum.department,
+            company: newAlum.company,
+            designation: newAlum.designation,
+            experience_years: newAlum.experienceYears,
+            skills: newAlum.skills,
+            preferred_domains: newAlum.preferredDomains,
+            bio: newAlum.bio,
+            available_for_mentoring: newAlum.availableForMentoring,
+            is_active: true
+          }, { onConflict: 'user_id' }).select().single();
+
+          if (aRes.data) {
+            newAlum.id = aRes.data.id;
+          }
+        } catch (dbErr) {
+          console.warn('Supabase alumni insert notice:', dbErr);
+        }
+      }
+
+      this.alumniService.addAlumniDirectly(newAlum);
+    }
+
+    // 5. Update local users signal
+    const newUser: User = {
+      id: authUserId,
+      email: cleanEmail,
+      fullName: cleanName,
+      role: role,
+      avatarUrl: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
+      phone: form.phone || '',
+      department: form.department,
+      company: form.company || form.recruiterCompany,
+      designation: form.designation || form.recruiterDesignation,
+      rollNumber: form.rollNumber,
+      isActive: true,
+      status: 'active',
+      createdAt: new Date().toISOString()
+    };
+
+    this.users.update(list => [newUser, ...list.filter(u => u.id !== authUserId && u.email.toLowerCase() !== cleanEmail)]);
+
+    // 6. Log audit action
+    this.auditLog.logAction('CREATE_USER', 'user', authUserId, {
+      fullName: cleanName,
+      email: cleanEmail,
+      role: role,
+      department: form.department,
+      company: form.company || form.recruiterCompany
+    });
+
+    const loginIdentifier = (role === 'student' && form.rollNumber) ? form.rollNumber : cleanEmail;
+
+    this.toast.success(
+      'User Account Created',
+      `${cleanName} (${role.toUpperCase()}) has been provisioned with credentials.`
+    );
+
+    return {
+      success: true,
+      user: newUser,
+      credentials: {
+        email: cleanEmail,
+        temporaryPassword: tempPassword,
+        role: role,
+        fullName: cleanName,
+        loginIdentifier: loginIdentifier
+      }
     };
   }
 
@@ -689,16 +1059,31 @@ export class AdminUserService {
       this.alumniService.updateAlumniDirectly(alumnus.id, { isActive });
     }
 
+    // Direct users signal update
+    this.users.update(list => list.map(u => (u.id === userId || u.email === userId) ? { ...u, isActive, status: isActive ? 'active' : 'deactivated' } : u));
+
     if (this.supabase.client) {
       try {
-        await this.supabase.client.rpc('admin_toggle_user_status', {
+        const { error: rpcError } = await this.supabase.client.rpc('admin_toggle_user_status', {
           p_user_id: userId,
           p_is_active: isActive,
           p_admin_id: this.authService.currentUser()?.id || null,
           p_reason: reason || ''
         });
+
+        if (rpcError) {
+          // Direct fallback to users table update
+          await this.supabase.client
+            .from('users')
+            .update({
+              is_active: isActive,
+              status: isActive ? 'active' : 'deactivated',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+        }
       } catch (err) {
-        console.warn('Error toggling user status via RPC:', err);
+        console.warn('Error toggling user status via RPC/DB:', err);
       }
     }
 

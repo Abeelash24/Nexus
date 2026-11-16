@@ -98,6 +98,10 @@ export const routes: Routes = [
             loadComponent: () => import('./features/chat/chat.component').then(m => m.ChatComponent)
           },
           {
+            path: 'chat',
+            loadComponent: () => import('./features/chat/chat.component').then(m => m.ChatComponent)
+          },
+          {
             path: 'calls',
             loadComponent: () => import('./features/calls/calls.component').then(m => m.CallsComponent)
           },
@@ -124,6 +128,10 @@ export const routes: Routes = [
             loadComponent: () => import('./features/recruiter/recruiter-dashboard/recruiter-dashboard.component').then(m => m.RecruiterDashboardComponent)
           },
           {
+            path: 'drives',
+            loadComponent: () => import('./features/recruiter/recruiter-drives/recruiter-drives.component').then(m => m.RecruiterDrivesComponent)
+          },
+          {
             path: 'jobs',
             loadComponent: () => import('./features/recruiter/recruiter-jobs/recruiter-jobs.component').then(m => m.RecruiterJobsComponent)
           },
@@ -137,6 +145,10 @@ export const routes: Routes = [
           },
           {
             path: 'messages',
+            loadComponent: () => import('./features/chat/chat.component').then(m => m.ChatComponent)
+          },
+          {
+            path: 'chat',
             loadComponent: () => import('./features/chat/chat.component').then(m => m.ChatComponent)
           },
           {
@@ -175,6 +187,10 @@ export const routes: Routes = [
           },
           {
             path: 'messages',
+            loadComponent: () => import('./features/chat/chat.component').then(m => m.ChatComponent)
+          },
+          {
+            path: 'chat',
             loadComponent: () => import('./features/chat/chat.component').then(m => m.ChatComponent)
           },
           {
@@ -245,6 +261,10 @@ export const routes: Routes = [
           },
           {
             path: 'messages',
+            loadComponent: () => import('./features/chat/chat.component').then(m => m.ChatComponent)
+          },
+          {
+            path: 'chat',
             loadComponent: () => import('./features/chat/chat.component').then(m => m.ChatComponent)
           },
           {

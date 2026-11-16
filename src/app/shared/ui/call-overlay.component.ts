@@ -1,5 +1,6 @@
-import { Component, inject, ElementRef, ViewChild, effect } from '@angular/core';
+import { Component, inject, ElementRef, ViewChild, effect, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { CallService } from '../../core/services/call.service';
 import { IconComponent } from '../icons/icon.component';
 
@@ -8,22 +9,89 @@ import { IconComponent } from '../icons/icon.component';
   standalone: true,
   imports: [CommonModule, IconComponent],
   template: `
+    <!-- 1. Global Incoming Call Alert Card -->
     <div
-      *ngIf="callService.isInCall()"
+      *ngIf="callService.incomingCall() as inv"
+      class="fixed top-6 inset-x-0 z-50 flex justify-center px-4 pointer-events-none animate-in fade-in slide-in-from-top-6 duration-300"
+    >
+      <div class="pointer-events-auto w-full max-w-md bg-slate-900/95 backdrop-blur-xl border border-purple-500/40 rounded-3xl p-5 shadow-2xl shadow-purple-950/50 flex flex-col gap-4 text-white">
+        <div class="flex items-center gap-3.5">
+          <div class="relative shrink-0">
+            <img
+              [src]="inv.callerAvatar || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(inv.callerName) + '&background=7c3aed&color=fff&bold=true')"
+              class="w-13 h-13 rounded-full object-cover border-2 border-purple-500 shadow-md"
+            />
+            <span class="absolute -top-1 -right-1 flex h-4 w-4">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-slate-900"></span>
+            </span>
+          </div>
+
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <h4 class="text-sm font-bold truncate text-white">{{ inv.callerName }}</h4>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                {{ inv.callerRole }}
+              </span>
+            </div>
+            <p class="text-xs text-slate-300 flex items-center gap-1.5 mt-0.5">
+              <app-icon [name]="inv.callType === 'video' ? 'video' : 'phone'" [size]="13" customClass="text-emerald-400"></app-icon>
+              <span>Incoming 1-on-1 {{ inv.callType === 'video' ? 'Video Session' : 'Voice Mentoring Call' }}</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 pt-1">
+          <button
+            type="button"
+            (click)="callService.declineIncomingCall(inv)"
+            class="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-rose-900/40 text-rose-300 hover:text-rose-200 border border-slate-700 hover:border-rose-700 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+          >
+            <app-icon name="phone-off" [size]="15"></app-icon>
+            Decline
+          </button>
+
+          <button
+            type="button"
+            (click)="acceptCall(inv)"
+            class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02]"
+          >
+            <app-icon [name]="inv.callType === 'video' ? 'video' : 'phone'" [size]="15"></app-icon>
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Global In-Call Overlay (when not in dedicated /calls page) -->
+    <div
+      *ngIf="callService.isInCall() && !isCallsPage()"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 sm:p-6 transition-all duration-300"
     >
       <div class="relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[85vh] max-h-[720px]">
-        <!-- Top bar with call status, connection type and timer -->
+        <!-- Top bar with call status, connection state and timer -->
         <div class="px-6 py-4 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between text-white">
           <div class="flex items-center gap-3">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+            <span
+              class="w-2.5 h-2.5 rounded-full"
+              [ngClass]="callService.connectionState() === 'connected' ? 'bg-emerald-500 animate-ping' : 'bg-amber-400 animate-pulse'"
+            ></span>
             <div>
               <div class="flex items-center gap-2">
                 <h4 class="text-sm font-bold tracking-wide">
                   {{ callService.activeCall()?.callType === 'video' ? '1-on-1 Video Session' : 'Voice Mentoring Call' }}
                 </h4>
-                <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                  WebRTC P2P
+                <!-- Connection State Badge -->
+                <span
+                  class="px-2.5 py-0.5 rounded-full text-[10px] font-medium border"
+                  [ngClass]="{
+                    'bg-emerald-500/20 text-emerald-300 border-emerald-500/30': callService.connectionState() === 'connected',
+                    'bg-amber-500/20 text-amber-300 border-amber-500/30': callService.connectionState() === 'connecting' || callService.connectionState() === 'calling',
+                    'bg-rose-500/20 text-rose-300 border-rose-500/30': callService.connectionState() === 'disconnected' || callService.connectionState() === 'reconnecting',
+                    'bg-slate-500/20 text-slate-300 border-slate-500/30': callService.connectionState() === 'idle' || callService.connectionState() === 'ended'
+                  }"
+                >
+                  {{ callService.connectionState() === 'connected' ? 'Connected (P2P)' : callService.connectionState() === 'connecting' || callService.connectionState() === 'calling' ? 'Connecting...' : callService.connectionState() === 'reconnecting' ? 'Reconnecting...' : 'Disconnected' }}
                 </span>
               </div>
               <p class="text-xs text-slate-400 mt-0.5">
@@ -154,6 +222,21 @@ import { IconComponent } from '../icons/icon.component';
             <app-icon [name]="callService.isVideoOff() ? 'video-off' : 'video'" [size]="20"></app-icon>
           </button>
 
+          <!-- Screen Share toggle (only on video calls) -->
+          <button
+            *ngIf="callService.activeCall()?.callType === 'video'"
+            type="button"
+            (click)="callService.toggleScreenShare()"
+            class="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200"
+            [ngClass]="{
+              'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/25': callService.isScreenSharing(),
+              'bg-slate-800 text-white hover:bg-slate-700 border border-slate-700': !callService.isScreenSharing()
+            }"
+            [title]="callService.isScreenSharing() ? 'Stop sharing screen' : 'Share screen'"
+          >
+            <app-icon name="monitor" [size]="20"></app-icon>
+          </button>
+
           <!-- End Call Button -->
           <button
             type="button"
@@ -170,9 +253,16 @@ import { IconComponent } from '../icons/icon.component';
 })
 export class CallOverlayComponent {
   callService = inject(CallService);
+  private router = inject(Router);
 
   @ViewChild('localVideoRef') localVideoRef?: ElementRef<HTMLVideoElement>;
   @ViewChild('remoteVideoRef') remoteVideoRef?: ElementRef<HTMLVideoElement>;
+
+  encodeURIComponent = encodeURIComponent;
+
+  isCallsPage = computed(() => {
+    return this.router.url.includes('/calls');
+  });
 
   constructor() {
     // Reactively bind streams to video elements whenever streams change
@@ -189,5 +279,9 @@ export class CallOverlayComponent {
         this.remoteVideoRef.nativeElement.srcObject = remote;
       }
     });
+  }
+
+  async acceptCall(inv: any) {
+    await this.callService.acceptIncomingCall(inv);
   }
 }
