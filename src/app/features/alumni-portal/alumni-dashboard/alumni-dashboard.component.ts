@@ -140,11 +140,18 @@ import { StatCardComponent } from '../../../shared/ui/stat-card.component';
               <div class="flex items-start justify-between gap-3 mb-3">
                 <div class="flex items-center gap-3 min-w-0">
                   <img
-                    [src]="req.requesterAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'"
+                    *ngIf="req.requesterAvatar"
+                    [src]="req.requesterAvatar"
                     [alt]="req.requesterName"
                     (error)="onImgError($event, req.requesterName || 'Student')"
-                    class="w-12 h-12 rounded-2xl object-cover border border-slate-200 shadow-2xs shrink-0"
+                    class="w-12 h-12 rounded-full object-cover border border-slate-200 shadow-2xs shrink-0"
                   />
+                  <div
+                    *ngIf="!req.requesterAvatar"
+                    class="w-12 h-12 rounded-full bg-linear-to-br from-purple-600 to-indigo-700 text-white font-bold text-sm flex items-center justify-center border border-slate-200 shadow-2xs shrink-0"
+                  >
+                    {{ (req.requesterName || 'S').charAt(0) }}
+                  </div>
                   <div class="min-w-0">
                     <h4 class="text-sm font-bold text-slate-900 leading-tight truncate">{{ req.requesterName || 'Student Candidate' }}</h4>
                     <span class="text-[11px] text-slate-600 font-medium block truncate mt-0.5">

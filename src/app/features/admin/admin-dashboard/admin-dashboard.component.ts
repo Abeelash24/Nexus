@@ -52,6 +52,13 @@ export type AnalyticsDrawerType = 'placement-rate' | 'average-ctc' | 'pipeline-f
               <span>Command Center</span>
             </a>
             <a
+              routerLink="/admin/students"
+              class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-md transition-all flex items-center gap-1.5"
+            >
+              <app-icon name="upload" [size]="14"></app-icon>
+              <span>Import Students</span>
+            </a>
+            <a
               routerLink="/admin/applications"
               class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-md transition-all"
             >
@@ -441,7 +448,16 @@ export type AnalyticsDrawerType = 'placement-rate' | 'average-ctc' | 'pipeline-f
                   </div>
                   <div *ngFor="let s of filteredPlacedStudents()" class="p-3.5 hover:bg-slate-50 flex items-center justify-between gap-3 transition-colors">
                     <div class="min-w-0 flex items-center gap-3">
-                      <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0">
+                      <img
+                        *ngIf="s.avatarUrl || s.profilePhoto"
+                        [src]="s.avatarUrl || s.profilePhoto"
+                        class="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                        [alt]="s.fullName"
+                      />
+                      <div
+                        *ngIf="!s.avatarUrl && !s.profilePhoto"
+                        class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0"
+                      >
                         {{ s.fullName.charAt(0) || 'S' }}
                       </div>
                       <div class="min-w-0">
@@ -836,7 +852,16 @@ export type AnalyticsDrawerType = 'placement-rate' | 'average-ctc' | 'pipeline-f
                   </div>
                   <div *ngFor="let s of filteredDeptStudents()" class="p-3.5 hover:bg-slate-50 flex items-center justify-between gap-3 transition-colors">
                     <div class="min-w-0 flex items-center gap-3">
-                      <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0">
+                      <img
+                        *ngIf="s.avatarUrl || s.profilePhoto"
+                        [src]="s.avatarUrl || s.profilePhoto"
+                        class="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                        [alt]="s.fullName"
+                      />
+                      <div
+                        *ngIf="!s.avatarUrl && !s.profilePhoto"
+                        class="w-9 h-9 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0"
+                      >
                         {{ s.fullName.charAt(0) || 'S' }}
                       </div>
                       <div class="min-w-0">

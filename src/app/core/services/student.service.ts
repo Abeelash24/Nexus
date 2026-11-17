@@ -34,7 +34,14 @@ export class StudentService {
       s => s.userId === user.id || s.email.toLowerCase() === user.email.toLowerCase()
     );
 
-    if (match) return match;
+    const userAvatar = user.avatarUrl || match?.avatarUrl || match?.profilePhoto || undefined;
+
+    if (match) {
+      if (userAvatar && (match.avatarUrl !== userAvatar || match.profilePhoto !== userAvatar)) {
+        return { ...match, avatarUrl: userAvatar, profilePhoto: userAvatar };
+      }
+      return match;
+    }
 
     // Create dynamic student representation for newly logged in user without hardcoded test fixtures
     return {
@@ -42,7 +49,8 @@ export class StudentService {
       userId: user.id,
       fullName: user.fullName || 'Student',
       email: user.email,
-      profilePhoto: user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      profilePhoto: userAvatar || '',
+      avatarUrl: userAvatar,
       phone: user.phone || '',
       department: user.department || 'Computer Science & Engineering',
       course: 'B.Tech',
@@ -141,12 +149,14 @@ export class StudentService {
   }
 
   mapDbRowToStudent(row: any): Student {
+    const avatar = row.avatar_url || row.profile_photo || undefined;
     return {
       id: row.id,
       userId: row.user_id,
       fullName: row.full_name,
       email: row.email,
-      profilePhoto: row.profile_photo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      profilePhoto: avatar || '',
+      avatarUrl: avatar,
       phone: row.phone || '',
       department: row.department || 'Computer Science & Engineering',
       departmentId: row.department_id,
@@ -260,6 +270,11 @@ export class StudentService {
           updated_at: new Date().toISOString()
         };
 
+        if (updated.avatarUrl || updated.profilePhoto) {
+          payload.avatar_url = updated.avatarUrl || updated.profilePhoto;
+          payload.profile_photo = updated.avatarUrl || updated.profilePhoto;
+        }
+
         const { error } = await client
           .from('students')
           .update(payload)
@@ -268,12 +283,73 @@ export class StudentService {
         if (error) {
           console.warn('Could not update student profile in Supabase:', error.message);
         }
+
+        // Also sync public.users.avatar_url
+        if (payload.avatar_url && updated.userId) {
+          await client.from('users').update({
+            avatar_url: payload.avatar_url,
+            full_name: updated.fullName,
+            phone: updated.phone
+          }).eq('id', updated.userId);
+        }
       } catch (err) {
         console.warn('Student profile update DB exception:', err);
       }
     }
 
     this.toast.success('Profile Updated', 'Your student career profile has been saved successfully.');
+  }
+
+  async uploadAvatarFile(file: File): Promise<string | null> {
+    const current = this.currentStudent();
+    let uploadedUrl = '';
+
+    if (this.supabase.isConfigured && this.supabase.getClient()) {
+      const ext = file.name.split('.').pop() || 'png';
+      const fileName = `student_${current.rollNumber || current.userId}_${Date.now()}.${ext}`;
+      const res = await this.supabase.uploadFile('avatars', fileName, file);
+      if (res) {
+        uploadedUrl = res.url;
+      }
+    }
+
+    if (!uploadedUrl) {
+      uploadedUrl = URL.createObjectURL(file);
+    }
+
+    await this.updateCurrentStudentProfile({
+      avatarUrl: uploadedUrl,
+      profilePhoto: uploadedUrl
+    });
+
+    this.authService.updateUserSessionData({
+      avatarUrl: uploadedUrl
+    });
+
+    this.toast.success('Avatar Updated', 'Your profile picture has been updated across CareerNexus.');
+    return uploadedUrl;
+  }
+
+  async bulkImportStudents(students: any[]): Promise<{ success: boolean; data?: any; error?: string }> {
+    const client = this.supabase.getClient();
+    if (!this.supabase.isConfigured || !client) {
+      return { success: false, error: 'Database connection not available.' };
+    }
+
+    try {
+      const { data, error } = await client.rpc('admin_bulk_create_students', {
+        p_students: students
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      await this.fetchStudentsFromDatabase();
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Bulk student import failed.' };
+    }
   }
 
   async uploadResumeFile(file: File): Promise<string | null> {

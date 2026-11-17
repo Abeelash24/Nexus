@@ -33,17 +33,34 @@ import { StatusTimelineComponent } from '../../../shared/ui/status-timeline.comp
         <div class="absolute right-0 top-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
 
         <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div>
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-white backdrop-blur-xs border border-white/20 mb-3">
-              <app-icon name="sparkles" [size]="14"></app-icon>
-              Campus Placement Season 2026–27
-            </span>
-            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Good morning, {{ studentService.currentStudent().fullName }} 👋
-            </h1>
-            <p class="text-blue-100 text-sm sm:text-base mt-1.5 max-w-xl leading-relaxed">
-              You have <strong class="text-white font-bold">{{ activeTasks().length }} active preparation tasks</strong> and {{ applicationService.studentApplications().length }} recruitment drives in progress.
-            </p>
+          <div class="flex items-center gap-4 sm:gap-5">
+            <div class="relative shrink-0">
+              <img
+                *ngIf="studentService.currentStudent().avatarUrl || studentService.currentStudent().profilePhoto"
+                [src]="studentService.currentStudent().avatarUrl || studentService.currentStudent().profilePhoto"
+                [alt]="studentService.currentStudent().fullName"
+                class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-white/40 shadow-xl ring-4 ring-white/10"
+              />
+              <div
+                *ngIf="!studentService.currentStudent().avatarUrl && !studentService.currentStudent().profilePhoto"
+                class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/20 text-white font-black text-2xl flex items-center justify-center border-2 border-white/40 shadow-xl ring-4 ring-white/10"
+              >
+                {{ studentService.currentStudent().fullName.charAt(0) || 'S' }}
+              </div>
+            </div>
+
+            <div>
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-white backdrop-blur-xs border border-white/20 mb-2">
+                <app-icon name="sparkles" [size]="14"></app-icon>
+                Campus Placement Season 2026–27
+              </span>
+              <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                Good morning, {{ studentService.currentStudent().fullName }} 👋
+              </h1>
+              <p class="text-blue-100 text-sm sm:text-base mt-1.5 max-w-xl leading-relaxed">
+                You have <strong class="text-white font-bold">{{ activeTasks().length }} active preparation tasks</strong> and {{ applicationService.studentApplications().length }} recruitment drives in progress.
+              </p>
+            </div>
           </div>
 
           <div class="flex flex-wrap gap-3">

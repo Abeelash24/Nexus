@@ -184,10 +184,17 @@ export interface SmartNavItem {
             aria-label="User Profile Menu"
           >
             <img
-              [src]="authService.currentUser()?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'"
-              alt="Avatar"
+              *ngIf="authService.currentUser()?.avatarUrl"
+              [src]="authService.currentUser()?.avatarUrl"
+              [alt]="authService.currentUser()?.fullName"
               class="w-8.5 h-8.5 rounded-full object-cover border border-slate-200 ring-2 ring-blue-100 shadow-2xs"
             />
+            <div
+              *ngIf="!authService.currentUser()?.avatarUrl"
+              class="w-8.5 h-8.5 rounded-full bg-linear-to-br from-blue-600 to-indigo-700 text-white font-bold text-xs flex items-center justify-center border border-slate-200 ring-2 ring-blue-100 shadow-2xs"
+            >
+              {{ authService.currentUser()?.fullName?.charAt(0) || 'U' }}
+            </div>
             <app-icon name="chevron-down" [size]="13" customClass="text-slate-400 hidden sm:block"></app-icon>
           </button>
 

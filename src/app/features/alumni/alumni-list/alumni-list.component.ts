@@ -202,11 +202,18 @@ import { EmptyStateComponent } from '../../../shared/ui/empty-state.component';
               <div class="flex items-center gap-3 min-w-0">
                 <div class="relative shrink-0">
                   <img
+                    *ngIf="mentor.profilePhoto"
                     [src]="mentor.profilePhoto"
                     [alt]="mentor.fullName"
                     (error)="onImgError($event, mentor.fullName)"
-                    class="w-14 h-14 rounded-2xl object-cover border border-slate-200 shadow-xs ring-2 ring-purple-50"
+                    class="w-14 h-14 rounded-full object-cover border border-slate-200 shadow-xs ring-2 ring-purple-50"
                   />
+                  <div
+                    *ngIf="!mentor.profilePhoto"
+                    class="w-14 h-14 rounded-full bg-linear-to-br from-purple-600 to-indigo-700 text-white font-black text-base flex items-center justify-center border border-slate-200 shadow-xs ring-2 ring-purple-50"
+                  >
+                    {{ mentor.fullName.charAt(0) || 'M' }}
+                  </div>
                   <span
                     *ngIf="mentor.availableForMentoring"
                     class="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white"
@@ -497,11 +504,18 @@ import { EmptyStateComponent } from '../../../shared/ui/empty-state.component';
         <div class="flex items-start justify-between pb-4 border-b border-slate-100">
           <div class="flex items-center gap-4">
             <img
+              *ngIf="selectedMentor()?.profilePhoto"
               [src]="selectedMentor()?.profilePhoto"
               [alt]="selectedMentor()?.fullName"
               (error)="onImgError($event, selectedMentor()?.fullName || '')"
-              class="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-md"
+              class="w-16 h-16 rounded-full object-cover border border-slate-200 shadow-md"
             />
+            <div
+              *ngIf="!selectedMentor()?.profilePhoto"
+              class="w-16 h-16 rounded-full bg-linear-to-br from-purple-600 to-indigo-700 text-white font-black text-xl flex items-center justify-center border border-slate-200 shadow-md"
+            >
+              {{ selectedMentor()?.fullName?.charAt(0) || 'M' }}
+            </div>
             <div>
               <div class="flex items-center gap-2">
                 <h3 class="text-xl font-bold text-slate-900">{{ selectedMentor()?.fullName }}</h3>

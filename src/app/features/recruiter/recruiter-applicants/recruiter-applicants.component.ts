@@ -145,9 +145,16 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
                   <td class="py-4 px-4 sm:px-6">
                     <div class="flex items-center gap-3">
                       <img
-                        [src]="app.studentAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'"
-                        class="w-10 h-10 rounded-xl object-cover border border-slate-200"
+                        *ngIf="app.studentAvatar"
+                        [src]="app.studentAvatar"
+                        class="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
                       />
+                      <div
+                        *ngIf="!app.studentAvatar"
+                        class="w-10 h-10 rounded-full bg-linear-to-br from-blue-600 to-indigo-700 text-white font-bold text-xs flex items-center justify-center border border-slate-200 shrink-0"
+                      >
+                        {{ app.studentName.charAt(0) || 'A' }}
+                      </div>
                       <div>
                         <h4 class="font-bold text-slate-900 text-sm">{{ app.studentName }}</h4>
                         <p class="text-[11px] text-slate-500 font-mono">{{ app.studentRoll }} • {{ app.studentDepartment }}</p>
@@ -307,7 +314,17 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
         <div class="w-full max-w-lg bg-white h-full shadow-2xl p-6 sm:p-8 overflow-y-auto space-y-6 animate-in slide-in-from-right duration-300 custom-scrollbar">
           <div class="flex items-center justify-between pb-4 border-b border-slate-100">
             <div class="flex items-center gap-3">
-              <img [src]="inspectingApp.studentAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'" class="w-12 h-12 rounded-2xl object-cover border border-slate-200" />
+              <img
+                *ngIf="inspectingApp.studentAvatar"
+                [src]="inspectingApp.studentAvatar"
+                class="w-12 h-12 rounded-full object-cover border border-slate-200 shrink-0"
+              />
+              <div
+                *ngIf="!inspectingApp.studentAvatar"
+                class="w-12 h-12 rounded-full bg-linear-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm flex items-center justify-center border border-slate-200 shrink-0"
+              >
+                {{ inspectingApp.studentName.charAt(0) || 'A' }}
+              </div>
               <div>
                 <h3 class="text-base font-bold text-slate-900">{{ inspectingApp.studentName }}</h3>
                 <p class="text-xs text-slate-500 font-mono">{{ inspectingApp.studentRoll }} • {{ inspectingApp.studentDepartment }}</p>

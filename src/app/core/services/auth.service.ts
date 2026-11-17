@@ -157,7 +157,7 @@ export class AuthService {
   private async syncSupabaseUser(authUser: any) {
     let role: UserRole = (authUser.user_metadata?.['role'] as UserRole) || 'student';
     let fullName: string = authUser.user_metadata?.['full_name'] || authUser.email?.split('@')[0] || 'Placement User';
-    let avatarUrl: string = authUser.user_metadata?.['avatar_url'] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+    let avatarUrl: string | undefined = authUser.user_metadata?.['avatar_url'] || undefined;
     let username: string | undefined;
     let phone: string | undefined;
     let department: string | undefined;
@@ -282,6 +282,19 @@ export class AuthService {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(user));
     } catch {
       // ignore
+    }
+  }
+
+  updateUserSessionData(data: Partial<User>) {
+    const current = this.currentUser();
+    if (current) {
+      const updated: User = { ...current, ...data };
+      this.currentUser.set(updated);
+      try {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
     }
   }
 

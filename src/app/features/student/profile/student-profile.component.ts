@@ -7,6 +7,7 @@ import { JobService } from '../../../core/services/job.service';
 import { TaskService } from '../../../core/services/task.service';
 import { SkillMatchingService, SingleJobSkillMatch } from '../../../core/services/skill-matching.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { StudentTask, TaskCategory, TaskPriority, TaskStatus } from '../../../core/models/task.model';
 import { IconComponent } from '../../../shared/icons/icon.component';
 import { BadgeComponent } from '../../../shared/ui/badge.component';
@@ -23,13 +24,38 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
       <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs relative overflow-hidden">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div class="flex flex-col sm:flex-row sm:items-center gap-5">
-            <div class="relative">
+            <div class="relative group">
               <img
-                [src]="student().profilePhoto"
+                *ngIf="student().avatarUrl || student().profilePhoto"
+                [src]="student().avatarUrl || student().profilePhoto"
                 [alt]="student().fullName"
                 (error)="onImgError($event, student().fullName)"
                 class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-4 border-slate-100 shadow-md ring-4 ring-blue-50 shrink-0"
               />
+              <div
+                *ngIf="!student().avatarUrl && !student().profilePhoto"
+                class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-linear-to-br from-blue-600 to-indigo-700 text-white font-black text-3xl flex items-center justify-center border-4 border-slate-100 shadow-md ring-4 ring-blue-50 shrink-0"
+              >
+                {{ student().fullName.charAt(0) || 'S' }}
+              </div>
+
+              <!-- Upload Avatar Button Overlay -->
+              <label
+                class="absolute inset-0 bg-slate-950/50 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer backdrop-blur-2xs"
+                title="Change Profile Picture"
+              >
+                <span *ngIf="isUploadingAvatar()" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <app-icon *ngIf="!isUploadingAvatar()" name="upload" [size]="20"></app-icon>
+                <span class="text-[10px] font-bold mt-1 text-center px-2">{{ isUploadingAvatar() ? 'Uploading...' : 'Change Photo' }}</span>
+                <input
+                  type="file"
+                  (change)="handleAvatarUpload($event)"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  class="hidden"
+                  [disabled]="isUploadingAvatar()"
+                />
+              </label>
+
               <span class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white" title="Active Student"></span>
             </div>
 
@@ -1321,6 +1347,7 @@ export class StudentProfileComponent {
   taskService = inject(TaskService);
   skillMatchingService = inject(SkillMatchingService);
   supabase = inject(SupabaseService);
+  toast = inject(ToastService);
 
   isDownloadingResume = signal(false);
 
@@ -1401,6 +1428,7 @@ export class StudentProfileComponent {
   showAddCertModal = signal(false);
   showAddTaskModal = signal(false);
   isUploadingResume = signal(false);
+  isUploadingAvatar = signal(false);
 
   // Edit fields
   editName = '';
@@ -1544,6 +1572,22 @@ export class StudentProfileComponent {
         await this.studentService.uploadResumeFile(file);
       } finally {
         this.isUploadingResume.set(false);
+      }
+    }
+  }
+
+  async handleAvatarUpload(event: any) {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        this.toast.error('Invalid File Type', 'Please select an image file (PNG, JPG, WebP).');
+        return;
+      }
+      this.isUploadingAvatar.set(true);
+      try {
+        await this.studentService.uploadAvatarFile(file);
+      } finally {
+        this.isUploadingAvatar.set(false);
       }
     }
   }

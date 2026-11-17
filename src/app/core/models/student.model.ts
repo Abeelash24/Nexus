@@ -24,6 +24,7 @@ export interface Student {
   fullName: string;
   email: string;
   profilePhoto: string;
+  avatarUrl?: string;
   phone: string;
   department: string; // e.g. 'Computer Science & Engineering'
   departmentId?: string;
