@@ -94,14 +94,14 @@ import { IconComponent } from '../../../shared/icons/icon.component';
             </div>
 
             <!-- Supabase / Registration Error Alert -->
-            <div *ngIf="authService.lastAuthError()" class="mb-5 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-3 shadow-xs">
+            <div *ngIf="authService.lastAuthError() || localError" class="mb-5 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-3 shadow-xs">
               <app-icon name="alert-triangle" [size]="18" class="text-rose-600 shrink-0 mt-0.5"></app-icon>
               <div class="space-y-1 flex-1">
                 <div class="flex items-center justify-between">
                   <span class="font-bold text-rose-950">Registration Notice</span>
-                  <button type="button" (click)="authService.lastAuthError.set('')" class="text-rose-400 hover:text-rose-700 text-xs font-bold">✕</button>
+                  <button type="button" (click)="clearErrors()" class="text-rose-400 hover:text-rose-700 text-xs font-bold">✕</button>
                 </div>
-                <p class="text-rose-700 leading-relaxed font-mono text-[11px] break-words">{{ authService.lastAuthError() }}</p>
+                <p class="text-rose-700 leading-relaxed font-mono text-[11px] break-words">{{ localError || authService.lastAuthError() }}</p>
               </div>
             </div>
 
@@ -181,13 +181,13 @@ import { IconComponent } from '../../../shared/icons/icon.component';
 
               <!-- Email -->
               <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Institutional Email Address</label>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
                 <input
                   type="email"
                   [(ngModel)]="email"
                   name="email"
                   required
-                  placeholder="name@university.edu or name@company.com"
+                  placeholder="name@example.com or name@university.edu"
                   class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-2xs font-medium"
                 />
               </div>
@@ -287,11 +287,11 @@ import { IconComponent } from '../../../shared/icons/icon.component';
 
               <button
                 type="submit"
-                [disabled]="authService.isLoading()"
+                [disabled]="authService.isLoading() || isSubmitting"
                 class="w-full py-3.5 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 shadow-md shadow-blue-500/20 transition-all duration-200 hover:scale-[1.01] flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
-                <span *ngIf="authService.isLoading()" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                <span>{{ authService.isLoading() ? 'Creating account...' : 'Complete Registration' }}</span>
+                <span *ngIf="authService.isLoading() || isSubmitting" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span>{{ (authService.isLoading() || isSubmitting) ? 'Creating account...' : 'Complete Registration' }}</span>
               </button>
             </form>
           </div>
@@ -320,55 +320,91 @@ export class RegisterComponent {
 
   showPassword = false;
   showConfirmPassword = false;
+  isSubmitting = false;
+  localError = '';
 
-  onSubmit(event: Event) {
+  clearErrors() {
+    this.localError = '';
+    this.authService.lastAuthError.set('');
+  }
+
+  async onSubmit(event: Event) {
     event.preventDefault();
+    this.clearErrors();
 
     const name = (this.fullName || '').trim();
     const uname = (this.username || '').trim();
-    const mail = (this.email || '').trim();
+    const mail = (this.email || '').trim().toLowerCase();
     const pwd = this.password || '';
     const confirmPwd = this.confirmPassword || '';
 
     if (!name) {
-      this.toast.error('Validation Error', 'Please enter your full name.');
+      this.localError = 'Please enter your full name.';
+      this.toast.error('Validation Error', this.localError);
       return;
     }
 
     if (!uname) {
-      this.toast.error('Validation Error', 'Please choose a username.');
+      this.localError = 'Please choose a username.';
+      this.toast.error('Validation Error', this.localError);
       return;
     }
 
-    if (!mail) {
-      this.toast.error('Validation Error', 'Please provide an email address.');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!mail || !emailRegex.test(mail)) {
+      this.localError = 'Please provide a valid email address (e.g. name@example.com).';
+      this.toast.error('Validation Error', this.localError);
+      return;
+    }
+
+    if (this.selectedRole === 'recruiter' && !this.company?.trim()) {
+      this.localError = 'Please enter your company or organization name.';
+      this.toast.error('Validation Error', this.localError);
       return;
     }
 
     if (!pwd || pwd.length < 8) {
-      this.toast.error('Weak Password', 'Password must be at least 8 characters in length.');
+      this.localError = 'Password must be at least 8 characters in length.';
+      this.toast.error('Weak Password', this.localError);
       return;
     }
 
     if (pwd !== confirmPwd) {
-      this.toast.error('Validation Error', 'Passwords do not match. Please verify your passwords.');
+      this.localError = 'Passwords do not match. Please verify your passwords.';
+      this.toast.error('Validation Error', this.localError);
       return;
     }
 
     // Role cannot be admin
     if (this.selectedRole === 'admin') {
-      this.toast.error('Forbidden', 'Cannot register as administrator.');
+      this.localError = 'Cannot self-register as administrator.';
+      this.toast.error('Forbidden', this.localError);
       return;
     }
 
-    this.authService.register({
-      fullName: name,
-      username: uname,
-      email: mail,
-      password: pwd,
-      role: this.selectedRole,
-      department: this.selectedRole === 'student' ? this.department : undefined,
-      company: this.selectedRole !== 'student' ? this.company : undefined
-    });
+    this.isSubmitting = true;
+    try {
+      const success = await this.authService.register({
+        fullName: name,
+        username: uname,
+        email: mail,
+        password: pwd,
+        role: this.selectedRole,
+        department: this.selectedRole === 'student' ? this.department : undefined,
+        company: this.selectedRole !== 'student' ? this.company : undefined
+      });
+
+      if (!success) {
+        this.localError = this.authService.lastAuthError() || 'Registration could not be completed. Please check your details and try again.';
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'An unexpected error occurred during registration. Please try again.';
+      this.localError = msg;
+      this.authService.lastAuthError.set(msg);
+      this.toast.error('Registration Error', msg);
+    } finally {
+      this.isSubmitting = false;
+      this.authService.isLoading.set(false);
+    }
   }
 }

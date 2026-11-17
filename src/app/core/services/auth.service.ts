@@ -158,6 +158,7 @@ export class AuthService {
     let role: UserRole = (authUser.user_metadata?.['role'] as UserRole) || 'student';
     let fullName: string = authUser.user_metadata?.['full_name'] || authUser.email?.split('@')[0] || 'Placement User';
     let avatarUrl: string = authUser.user_metadata?.['avatar_url'] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+    let username: string | undefined;
     let phone: string | undefined;
     let department: string | undefined;
     let company: string | undefined;
@@ -171,7 +172,7 @@ export class AuthService {
       try {
         const { data, error } = await client
           .from('users')
-          .select('id, email, full_name, role, avatar_url, phone, status, is_active, department, company, designation, roll_number, created_at')
+          .select('id, email, full_name, username, role, avatar_url, phone, status, is_active, department, company, designation, roll_number, created_at')
           .eq('id', authUser.id)
           .maybeSingle();
 
@@ -186,6 +187,7 @@ export class AuthService {
 
           role = (data.role as UserRole) || role;
           fullName = data.full_name || fullName;
+          username = data.username || authUser.user_metadata?.['username'] || authUser.email?.split('@')[0] || '';
           avatarUrl = data.avatar_url || avatarUrl;
           phone = data.phone || authUser.user_metadata?.['phone'] || phone;
           department = data.department || authUser.user_metadata?.['department'] || department;
@@ -207,6 +209,7 @@ export class AuthService {
             }
           }
         } else {
+          username = authUser.user_metadata?.['username'] || authUser.email?.split('@')[0] || '';
           company = authUser.user_metadata?.['company'] || company;
           designation = authUser.user_metadata?.['designation'] || designation;
           department = authUser.user_metadata?.['department'] || department;
@@ -243,7 +246,7 @@ export class AuthService {
 
     const user: User = {
       id: authUser.id,
-      username: authUser.email?.split('@')[0] || '',
+      username: username || authUser.email?.split('@')[0] || '',
       email: authUser.email || '',
       role: role,
       fullName: fullName,
@@ -329,8 +332,11 @@ export class AuthService {
     try {
       let targetEmail = identifier;
 
-      // If user provided a username or roll number without '@', resolve to full email
-      if (!identifier.includes('@')) {
+      // Handle direct admin username resolution
+      if (identifier.toLowerCase() === 'cnexadmin') {
+        targetEmail = 'cnexadmin@gmail.com';
+      } else if (!identifier.includes('@')) {
+        // If user provided a username or roll number without '@', resolve to full email
         const client = this.supabase.getClient();
         if (client) {
           try {
@@ -347,7 +353,7 @@ export class AuthService {
               const { data: userRow } = await client
                 .from('users')
                 .select('email')
-                .ilike('email', `${identifier}@%`)
+                .or(`username.ilike.${identifier},email.ilike.${identifier}@%`)
                 .maybeSingle();
 
               if (userRow?.email) {
@@ -372,7 +378,6 @@ export class AuthService {
       });
 
       if (error || !data.session || !data.user) {
-        this.isLoading.set(false);
         const errMsg = error?.message || 'Invalid email or password.';
         this.lastAuthError.set(errMsg);
         this.toast.error('Authentication Failed', errMsg);
@@ -384,21 +389,27 @@ export class AuthService {
 
       const currentUser = this.currentUser();
       if (!currentUser) {
-        this.isLoading.set(false);
         return false;
       }
 
-      this.isLoading.set(false);
       this.toast.success('Login Successful', `Welcome back, ${currentUser.fullName || data.user.email}!`);
       this.redirectByRole(currentUser.role);
       return true;
     } catch (err: any) {
-      this.isLoading.set(false);
       const msg = err?.message || 'Authentication service error';
       this.lastAuthError.set(msg);
       this.toast.error('Login Error', msg);
       return false;
+    } finally {
+      this.isLoading.set(false);
     }
+  }
+
+  /**
+   * Alias for login to support both signIn() and login() naming conventions
+   */
+  async signIn(usernameOrEmail: string, password?: string): Promise<boolean> {
+    return this.login(usernameOrEmail, password);
   }
 
   /**
@@ -452,44 +463,63 @@ export class AuthService {
         password: data.password,
         options: {
           data: {
-            full_name: data.fullName,
-            role: safeRole
+            full_name: data.fullName.trim(),
+            role: safeRole,
+            username: (data.username || '').trim() || cleanEmail.split('@')[0],
+            department: data.department?.trim() || (safeRole === 'student' ? 'Computer Science & Engineering' : undefined),
+            company: data.company?.trim() || undefined,
+            company_name: data.company?.trim() || undefined
           }
         }
       });
 
       if (error) {
-        this.isLoading.set(false);
         this.lastAuthError.set(error.message);
         this.toast.error('Registration Failed', error.message);
         return false;
       }
 
       if (authData.user) {
-        if (!authData.session) {
-          this.isLoading.set(false);
-          this.emailConfirmationPending.set(cleanEmail);
-          const confirmNotice = `Verification email sent to ${cleanEmail}. Please confirm your email before signing in.`;
-          this.toast.info('Verification Required', confirmNotice);
-          this.router.navigate(['/login']);
+        let activeSessionUser = authData.session ? authData.user : null;
+
+        // If no session was returned by signUp, attempt immediate sign-in
+        if (!activeSessionUser) {
+          try {
+            const { data: signInData, error: signInError } = await this.supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password: data.password!
+            });
+            if (!signInError && signInData?.session && signInData.user) {
+              activeSessionUser = signInData.user;
+            }
+          } catch {
+            // Ignore sign-in attempt error and fall through to email confirmation check
+          }
+        }
+
+        if (activeSessionUser) {
+          await this.syncSupabaseUser(activeSessionUser);
+          this.toast.success('Account Created', `Welcome to CareerNexus, ${data.fullName}!`);
+          this.redirectByRole(safeRole);
           return true;
         }
 
-        await this.syncSupabaseUser(authData.user);
-        this.isLoading.set(false);
-        this.toast.success('Account Created', `Welcome to CareerNexus, ${data.fullName}!`);
-        this.redirectByRole(safeRole);
+        // If session is still null (e.g. email confirmation required)
+        this.emailConfirmationPending.set(cleanEmail);
+        const confirmNotice = `Account created! If verification is required, please check ${cleanEmail} before signing in.`;
+        this.toast.info('Verification Required', confirmNotice);
+        this.router.navigate(['/login']);
         return true;
       }
 
-      this.isLoading.set(false);
       return false;
     } catch (err: any) {
-      this.isLoading.set(false);
       const msg = err?.message || 'Registration service error';
       this.lastAuthError.set(msg);
       this.toast.error('Registration Error', msg);
       return false;
+    } finally {
+      this.isLoading.set(false);
     }
   }
 

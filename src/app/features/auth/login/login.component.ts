@@ -103,14 +103,14 @@ import { IconComponent } from '../../../shared/icons/icon.component';
             </div>
 
             <!-- Real Supabase / Authentication Error Alert -->
-            <div *ngIf="authService.lastAuthError()" class="mb-5 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-3 shadow-xs">
+            <div *ngIf="authService.lastAuthError() || localError" class="mb-5 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-3 shadow-xs">
               <app-icon name="alert-triangle" [size]="18" class="text-rose-600 shrink-0 mt-0.5"></app-icon>
               <div class="space-y-1 flex-1">
                 <div class="flex items-center justify-between">
                   <span class="font-bold text-rose-950">Authentication Notice</span>
-                  <button type="button" (click)="authService.lastAuthError.set('')" class="text-rose-400 hover:text-rose-700 text-xs font-bold">✕</button>
+                  <button type="button" (click)="clearErrors()" class="text-rose-400 hover:text-rose-700 text-xs font-bold">✕</button>
                 </div>
-                <p class="text-rose-700 leading-relaxed font-mono text-[11px] break-words">{{ authService.lastAuthError() }}</p>
+                <p class="text-rose-700 leading-relaxed font-mono text-[11px] break-words">{{ localError || authService.lastAuthError() }}</p>
               </div>
             </div>
 
@@ -128,7 +128,7 @@ import { IconComponent } from '../../../shared/icons/icon.component';
             <!-- Production Login Form -->
             <form (submit)="onSubmit($event)" class="space-y-5">
               <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1.5">Username or Institutional Email</label>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">Username or Email Address</label>
                 <div class="relative">
                   <input
                     type="text"
@@ -182,11 +182,11 @@ import { IconComponent } from '../../../shared/icons/icon.component';
 
               <button
                 type="submit"
-                [disabled]="authService.isLoading()"
+                [disabled]="authService.isLoading() || isSubmitting"
                 class="w-full py-3.5 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 shadow-md shadow-blue-500/20 transition-all duration-200 hover:scale-[1.01] flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
-                <span *ngIf="authService.isLoading()" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                <span>{{ authService.isLoading() ? 'Signing In...' : 'Sign In with Supabase' }}</span>
+                <span *ngIf="authService.isLoading() || isSubmitting" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span>{{ (authService.isLoading() || isSubmitting) ? 'Signing In...' : 'Sign In with Supabase' }}</span>
               </button>
             </form>
           </div>
@@ -209,23 +209,48 @@ export class LoginComponent {
   password = '';
   showPassword = false;
   rememberMe = true;
+  isSubmitting = false;
+  localError = '';
 
-  onSubmit(event: Event) {
+  clearErrors() {
+    this.localError = '';
+    this.authService.lastAuthError.set('');
+  }
+
+  async onSubmit(event: Event) {
     event.preventDefault();
+    this.clearErrors();
+
     const cleanId = (this.identifier || '').trim();
     const cleanPwd = (this.password || '').trim();
 
     if (!cleanId) {
-      this.toast.error('Missing Identifier', 'Please enter your username or email address.');
+      this.localError = 'Please enter your username or email address.';
+      this.toast.error('Missing Identifier', this.localError);
       return;
     }
 
     if (!cleanPwd) {
-      this.toast.error('Missing Password', 'Please enter your password.');
+      this.localError = 'Please enter your password.';
+      this.toast.error('Missing Password', this.localError);
       return;
     }
 
-    this.authService.login(cleanId, cleanPwd);
+    this.isSubmitting = true;
+    try {
+      const success = await this.authService.login(cleanId, cleanPwd);
+      if (!success) {
+        this.localError = this.authService.lastAuthError() || 'Invalid credentials or inactive account.';
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'An unexpected error occurred during sign in.';
+      this.localError = msg;
+      this.authService.lastAuthError.set(msg);
+      this.toast.error('Login Error', msg);
+    } finally {
+      this.isSubmitting = false;
+      this.authService.isLoading.set(false);
+    }
   }
 
   onForgotPassword() {
