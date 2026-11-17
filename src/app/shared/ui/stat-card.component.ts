@@ -7,7 +7,13 @@ import { IconComponent } from '../icons/icon.component';
   standalone: true,
   imports: [CommonModule, IconComponent],
   template: `
-    <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-slate-300/80 transition-all duration-200 relative overflow-hidden group">
+    <div
+      class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs transition-all duration-200 relative overflow-hidden group"
+      [ngClass]="{
+        'cursor-pointer hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300': clickable,
+        'hover:shadow-md hover:border-slate-300/80': !clickable
+      }"
+    >
       <!-- Glow accent on hover -->
       <div
         class="absolute -right-6 -bottom-6 w-24 h-24 rounded-full opacity-10 blur-xl transition-all duration-300 group-hover:scale-150 pointer-events-none"
@@ -49,6 +55,14 @@ import { IconComponent } from '../icons/icon.component';
       </div>
 
       <p *ngIf="subtitle" class="text-xs text-slate-500 mt-1 font-medium leading-relaxed">{{ subtitle }}</p>
+
+      <div
+        *ngIf="hint"
+        class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-blue-600 group-hover:text-blue-700 transition-colors"
+      >
+        <span>{{ hint }}</span>
+        <app-icon name="chevron-right" [size]="13"></app-icon>
+      </div>
     </div>
   `
 })
@@ -59,4 +73,6 @@ export class StatCardComponent {
   @Input() subtitle?: string;
   @Input() trend?: string;
   @Input() color: 'blue' | 'emerald' | 'purple' | 'amber' | 'cyan' | 'indigo' | 'rose' = 'blue';
+  @Input() hint?: string;
+  @Input() clickable: boolean = false;
 }
