@@ -736,9 +736,32 @@ export class ResourceService {
       }
     }
 
-    this.toast.info('Downloading File', `Retrieving "${resource.title}" from storage...`);
+    this.toast.info('Downloading File', `Retrieving "${resource.title}"...`);
 
-    // Download from Supabase Storage bucket
+    // 1. Direct download for bundled local static assets (/assets/resources/... or /resources/...)
+    if (
+      resource.fileUrl &&
+      (resource.fileUrl.startsWith('/assets/') ||
+        resource.fileUrl.startsWith('/resources/') ||
+        resource.fileUrl.startsWith('assets/') ||
+        resource.fileUrl.startsWith('resources/'))
+    ) {
+      try {
+        const link = document.createElement('a');
+        link.href = resource.fileUrl;
+        link.download = resource.fileName || `${resource.title || 'document'}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        this.toast.success('Download Complete', `"${resource.title}" saved to device.`);
+        return;
+      } catch (err) {
+        window.open(resource.fileUrl, '_blank');
+        return;
+      }
+    }
+
+    // 2. Download from Supabase Storage bucket
     if (this.supabase.client && resource.filePath) {
       try {
         const blob = await this.supabase.downloadFileBlob(

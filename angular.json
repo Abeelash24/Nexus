@@ -47,6 +47,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "public/assets/resources",
+                "output": "resources"
               }
             ],
             "styles": ["src/styles.css"]

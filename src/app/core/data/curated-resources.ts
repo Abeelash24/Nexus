@@ -1,4 +1,7 @@
 import { ResourceFile, ResourceFolder } from '../models/resource.model';
+import { DEFAULT_DRIVE_RESOURCES } from './default-drive-resources';
+
+export { DEFAULT_DRIVE_RESOURCES };
 
 export const CURATED_RESOURCE_FOLDERS: ResourceFolder[] = [
   {
@@ -6,7 +9,7 @@ export const CURATED_RESOURCE_FOLDERS: ResourceFolder[] = [
     name: 'Data Structures & Algorithms',
     category: 'Data Structures & Algorithms',
     isGlobal: true,
-    filesCount: 4,
+    filesCount: 21,
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-10-01T00:00:00Z'
   },
@@ -15,7 +18,7 @@ export const CURATED_RESOURCE_FOLDERS: ResourceFolder[] = [
     name: 'Quantitative & Logical Aptitude',
     category: 'Quantitative & Logical Aptitude',
     isGlobal: true,
-    filesCount: 3,
+    filesCount: 11,
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-10-01T00:00:00Z'
   },
@@ -24,7 +27,7 @@ export const CURATED_RESOURCE_FOLDERS: ResourceFolder[] = [
     name: 'Database Management Systems & SQL',
     category: 'Database Management Systems & SQL',
     isGlobal: true,
-    filesCount: 3,
+    filesCount: 5,
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-10-01T00:00:00Z'
   },
@@ -42,7 +45,7 @@ export const CURATED_RESOURCE_FOLDERS: ResourceFolder[] = [
     name: 'Computer Networks',
     category: 'Computer Networks',
     isGlobal: true,
-    filesCount: 2,
+    filesCount: 3,
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-10-01T00:00:00Z'
   },
@@ -60,7 +63,7 @@ export const CURATED_RESOURCE_FOLDERS: ResourceFolder[] = [
     name: 'Java & Spring Boot',
     category: 'Java & Spring Boot',
     isGlobal: true,
-    filesCount: 3,
+    filesCount: 21,
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-10-01T00:00:00Z'
   },
@@ -69,7 +72,7 @@ export const CURATED_RESOURCE_FOLDERS: ResourceFolder[] = [
     name: 'Python & Machine Learning',
     category: 'Python & Machine Learning',
     isGlobal: true,
-    filesCount: 3,
+    filesCount: 4,
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-10-01T00:00:00Z'
   },
@@ -78,7 +81,7 @@ export const CURATED_RESOURCE_FOLDERS: ResourceFolder[] = [
     name: 'Full Stack & Web Development',
     category: 'Full Stack & Web Development',
     isGlobal: true,
-    filesCount: 3,
+    filesCount: 18,
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-10-01T00:00:00Z'
   },
@@ -87,7 +90,7 @@ export const CURATED_RESOURCE_FOLDERS: ResourceFolder[] = [
     name: 'Cloud & DevOps',
     category: 'Cloud & DevOps',
     isGlobal: true,
-    filesCount: 3,
+    filesCount: 4,
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-10-01T00:00:00Z'
   },
@@ -105,7 +108,7 @@ export const CURATED_RESOURCE_FOLDERS: ResourceFolder[] = [
     name: 'Top Tech Company Specific Kits',
     category: 'Top Tech Company Specific Kits',
     isGlobal: true,
-    filesCount: 3,
+    filesCount: 9,
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-10-01T00:00:00Z'
   },
@@ -123,13 +126,14 @@ export const CURATED_RESOURCE_FOLDERS: ResourceFolder[] = [
     name: 'Placement Files & Roadmaps',
     category: 'Placement Files & Roadmaps',
     isGlobal: true,
-    filesCount: 3,
+    filesCount: 7,
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-10-01T00:00:00Z'
   }
 ];
 
 export const CURATED_RESOURCES: ResourceFile[] = [
+  ...DEFAULT_DRIVE_RESOURCES,
   // 1. Data Structures & Algorithms
   {
     id: 'res-dsa-01',

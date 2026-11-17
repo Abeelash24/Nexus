@@ -1,6 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ResourceService } from '../../core/services/resource.service';
 import { AuthService } from '../../core/services/auth.service';
 import {
@@ -386,6 +387,17 @@ import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
               </div>
 
               <div class="flex items-center gap-1.5">
+                <!-- PDF Preview Button -->
+                <button
+                  *ngIf="isPdf(file)"
+                  type="button"
+                  (click)="openPreviewModal(file)"
+                  class="p-2 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                  title="Preview PDF document inline"
+                >
+                  <app-icon name="file-text" [size]="15"></app-icon>
+                </button>
+
                 <!-- Info / Detail Modal Button -->
                 <button
                   type="button"
@@ -529,6 +541,17 @@ import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
                           [size]="15"
                           [customClass]="file.isBookmarked ? 'fill-amber-500 text-amber-500' : ''"
                         ></app-icon>
+                      </button>
+
+                      <!-- PDF Preview -->
+                      <button
+                        *ngIf="isPdf(file)"
+                        type="button"
+                        (click)="openPreviewModal(file)"
+                        class="p-1.5 text-indigo-600 hover:text-indigo-800 transition-colors"
+                        title="Preview PDF"
+                      >
+                        <app-icon name="file-text" [size]="15"></app-icon>
                       </button>
 
                       <!-- Detail Modal -->
@@ -709,6 +732,17 @@ import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
               class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
             >
               Close
+            </button>
+
+            <!-- PDF Inline Preview Action in Detail Modal -->
+            <button
+              *ngIf="isPdf(selectedDetailFile())"
+              type="button"
+              (click)="selectedDetailFile() && openPreviewModal(selectedDetailFile()!)"
+              class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 shadow-xs transition-colors"
+            >
+              <span>Preview PDF</span>
+              <app-icon name="file-text" [size]="14"></app-icon>
             </button>
 
             <ng-container *ngIf="selectedDetailFile()?.storageType === 'external'">
@@ -1076,11 +1110,97 @@ import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
         </div>
       </div>
     </div>
+
+    <!-- PREVIEW PDF MODAL -->
+    <div
+      *ngIf="showPreviewModal() && previewingFile()"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-6 animate-in fade-in"
+    >
+      <div class="bg-white rounded-3xl max-w-5xl w-full h-[90vh] shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+        <!-- Preview Modal Header -->
+        <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between gap-3 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0 text-indigo-300">
+              <app-icon name="file-text" [size]="20"></app-icon>
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+                  {{ previewingFile()?.category }}
+                </span>
+                <span class="text-[11px] text-slate-300">
+                  {{ previewingFile()?.sizeFormatted }}
+                </span>
+              </div>
+              <h3 class="text-sm sm:text-base font-bold text-white truncate max-w-xl">
+                {{ previewingFile()?.title || previewingFile()?.name }}
+              </h3>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <!-- Open in New Tab -->
+            <a
+              [href]="previewingFile()?.fileUrl || previewingFile()?.externalUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white flex items-center gap-1.5 transition-colors border border-white/10"
+              title="Open full PDF in new browser tab"
+            >
+              <span>Open Tab</span>
+              <app-icon name="external-link" [size]="13"></app-icon>
+            </a>
+
+            <!-- Download -->
+            <button
+              type="button"
+              (click)="previewingFile() && resourceService.downloadFile(previewingFile()!)"
+              class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition-colors shadow-sm"
+              title="Download PDF file"
+            >
+              <span>Download</span>
+              <app-icon name="download" [size]="13"></app-icon>
+            </button>
+
+            <!-- Close -->
+            <button
+              type="button"
+              (click)="closePreviewModal()"
+              class="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+              title="Close Preview"
+            >
+              <app-icon name="x" [size]="20"></app-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Preview Modal Body (Embedded PDF Viewer) -->
+        <div class="flex-1 bg-slate-900 relative overflow-hidden flex flex-col">
+          <iframe
+            *ngIf="safePreviewUrl()"
+            [src]="safePreviewUrl()!"
+            class="w-full h-full border-0 bg-slate-800"
+            title="PDF Document Preview"
+          ></iframe>
+        </div>
+
+        <!-- Preview Modal Footer info bar -->
+        <div class="px-5 py-2.5 bg-slate-100 border-t border-slate-200 text-xs text-slate-600 flex items-center justify-between">
+          <span class="truncate max-w-md">
+            Source: <strong class="text-slate-800">{{ previewingFile()?.provider }}</strong> • {{ previewingFile()?.fileName }}
+          </span>
+          <span class="text-[11px] text-slate-500">
+            Viewing via CareerNexus PDF Engine
+          </span>
+        </div>
+      </div>
+    </div>
   `
 })
 export class ResourceDriveComponent {
   resourceService = inject(ResourceService);
   authService = inject(AuthService);
+  sanitizer = inject(DomSanitizer);
 
   readonly categories = RESOURCE_CATEGORIES;
   readonly resourceTypes = RESOURCE_TYPES;
@@ -1106,10 +1226,37 @@ export class ResourceDriveComponent {
   showAddModal = signal<boolean>(false);
   showEditModal = signal<boolean>(false);
   showDetailModal = signal<boolean>(false);
+  showPreviewModal = signal<boolean>(false);
   isSaving = signal<boolean>(false);
 
-  // Detail Modal State
+  // Detail & Preview Modal State
   selectedDetailFile = signal<ResourceFile | null>(null);
+  previewingFile = signal<ResourceFile | null>(null);
+
+  safePreviewUrl = computed<SafeResourceUrl | null>(() => {
+    const file = this.previewingFile();
+    if (!file) return null;
+    const url = file.fileUrl || file.externalUrl || '';
+    if (!url) return null;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  });
+
+  isPdf(file: ResourceFile | null | undefined): boolean {
+    if (!file) return false;
+    if (file.resourceType === 'PDF') return true;
+    const url = (file.fileUrl || file.fileName || file.name || '').toLowerCase();
+    return url.endsWith('.pdf') || url.includes('.pdf?');
+  }
+
+  openPreviewModal(file: ResourceFile) {
+    this.previewingFile.set(file);
+    this.showPreviewModal.set(true);
+  }
+
+  closePreviewModal() {
+    this.showPreviewModal.set(false);
+    this.previewingFile.set(null);
+  }
 
   // Add Resource Form State
   addFormStorageType = signal<StorageType>('external');
