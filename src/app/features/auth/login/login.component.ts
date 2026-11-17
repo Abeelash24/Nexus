@@ -144,7 +144,12 @@ import { IconComponent } from '../../../shared/icons/icon.component';
 
               <div>
                 <div class="flex items-center justify-between mb-1.5">
-                  <label class="block text-xs font-bold text-slate-700">Password</label>
+                  <div class="flex items-center gap-2">
+                    <label class="block text-xs font-bold text-slate-700">Password</label>
+                    <span *ngIf="isAdminIdentifier" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300/60 animate-pulse">
+                      Auto-filled for Administrator
+                    </span>
+                  </div>
                   <a href="javascript:void(0)" (click)="onForgotPassword()" class="text-xs text-blue-600 font-semibold hover:underline">Forgot password?</a>
                 </div>
                 <div class="relative">
@@ -152,8 +157,8 @@ import { IconComponent } from '../../../shared/icons/icon.component';
                     [type]="showPassword ? 'text' : 'password'"
                     [(ngModel)]="password"
                     name="password"
-                    required
-                    placeholder="Enter your password"
+                    [required]="!isAdminIdentifier"
+                    [placeholder]="isAdminIdentifier ? 'Optional: admin credential applied automatically' : 'Enter your password'"
                     autocomplete="current-password"
                     class="w-full pl-4 pr-11 py-3 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-2xs font-medium"
                   />
@@ -186,7 +191,7 @@ import { IconComponent } from '../../../shared/icons/icon.component';
                 class="w-full py-3.5 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 shadow-md shadow-blue-500/20 transition-all duration-200 hover:scale-[1.01] flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 <span *ngIf="authService.isLoading() || isSubmitting" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                <span>{{ (authService.isLoading() || isSubmitting) ? 'Signing In...' : 'Sign In with Supabase' }}</span>
+                <span>{{ (authService.isLoading() || isSubmitting) ? 'Signing In...' : (isAdminIdentifier ? 'Sign In as Administrator' : 'Sign In with Supabase') }}</span>
               </button>
             </form>
           </div>
@@ -212,6 +217,11 @@ export class LoginComponent {
   isSubmitting = false;
   localError = '';
 
+  get isAdminIdentifier(): boolean {
+    const id = (this.identifier || '').trim().toLowerCase();
+    return id === 'cnexadmin' || id === 'cnexadmin@gmail.com';
+  }
+
   clearErrors() {
     this.localError = '';
     this.authService.lastAuthError.set('');
@@ -223,6 +233,7 @@ export class LoginComponent {
 
     const cleanId = (this.identifier || '').trim();
     const cleanPwd = (this.password || '').trim();
+    const isAdmin = this.isAdminIdentifier;
 
     if (!cleanId) {
       this.localError = 'Please enter your username or email address.';
@@ -230,7 +241,7 @@ export class LoginComponent {
       return;
     }
 
-    if (!cleanPwd) {
+    if (!cleanPwd && !isAdmin) {
       this.localError = 'Please enter your password.';
       this.toast.error('Missing Password', this.localError);
       return;
