@@ -362,7 +362,7 @@ export interface ImportSummary {
               </button>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 overflow-hidden bg-white max-h-72 overflow-y-auto">
+            <div class="rounded-2xl border border-slate-200 overflow-hidden bg-white max-h-72 overflow-y-auto overflow-x-auto">
               <table class="w-full text-left text-xs">
                 <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] sticky top-0 z-10">
                   <tr>

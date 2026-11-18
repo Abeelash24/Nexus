@@ -493,6 +493,11 @@ import { CommonModule } from '@angular/common';
         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
       </g>
 
+      <!-- Activity -->
+      <g *ngSwitchCase="'activity'">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+      </g>
+
       <!-- Default circle fallback -->
       <g *ngSwitchDefault>
         <circle cx="12" cy="12" r="10"></circle>

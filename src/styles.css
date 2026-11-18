@@ -130,3 +130,20 @@ input:focus, select:focus, textarea:focus {
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
 }
+
+/* Scoped Mobile Overrides (< 768px viewports only - Desktop strictly untouched) */
+@media (max-width: 767px) {
+  /* Prevent iOS Safari from auto-zooming on focus while keeping desktop typography intact */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Mobile bottom bar active link styling */
+  .active-mobile-tab {
+    color: #2563eb !important;
+  }
+  .active-mobile-tab .mobile-tab-indicator {
+    opacity: 1 !important;
+    transform: scale(1) !important;
+  }
+}

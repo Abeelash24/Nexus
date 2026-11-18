@@ -21,7 +21,7 @@ export interface SmartNavItem {
   imports: [CommonModule, RouterLink, RouterLinkActive, IconComponent],
   template: `
     <header
-      class="navbar h-18 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-5 lg:px-6 flex items-center justify-between select-none transition-shadow duration-200 w-full relative"
+      class="navbar h-16 md:h-18 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-5 lg:px-6 flex items-center justify-between select-none transition-shadow duration-200 w-full relative"
       [class.navbar-expanded]="isNavExpanded()"
       [class.navbar-collapsed]="!isNavExpanded()"
       [class.shadow-md]="isNavExpanded()"
@@ -128,7 +128,7 @@ export interface SmartNavItem {
           <!-- Notifications Dropdown Flyout -->
           <div
             *ngIf="showNotifications()"
-            class="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden z-50 glass-dropdown animate-in fade-in zoom-in-95 duration-150"
+            class="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 mt-2 sm:w-96 max-w-sm sm:max-w-none mx-auto sm:mx-0 bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden z-50 glass-dropdown animate-in fade-in zoom-in-95 duration-150"
             (click)="$event.stopPropagation()"
           >
             <div class="p-4 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between">
@@ -249,9 +249,14 @@ export interface SmartNavItem {
       top: 0;
       left: 0;
       right: 0;
-      height: 72px;
+      height: 64px;
       z-index: 50;
       width: 100%;
+    }
+    @media (min-width: 768px) {
+      :host {
+        height: 72px;
+      }
     }
 
     /* Invisible hover trigger zone immediately below the navbar */

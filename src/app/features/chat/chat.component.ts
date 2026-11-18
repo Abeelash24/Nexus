@@ -14,7 +14,7 @@ import { ChatMessage } from '../../core/models/message.model';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, IconComponent],
   template: `
-    <div class="h-[calc(100vh-8.5rem)] bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col md:flex-row animate-in fade-in duration-300">
+    <div class="h-[calc(100dvh-12.5rem)] md:h-[calc(100vh-8.5rem)] bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col md:flex-row animate-in fade-in duration-300">
       
       <!-- Left Sidebar: Conversations List -->
       <div

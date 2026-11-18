@@ -52,7 +52,7 @@ import { IconComponent } from '../../../shared/icons/icon.component';
           </div>
 
           <!-- Feature Highlights -->
-          <div class="relative z-10 space-y-3.5 my-8">
+          <div class="hidden sm:block relative z-10 space-y-3.5 my-8">
             <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs flex items-start gap-3">
               <div class="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0 mt-0.5">
                 <app-icon name="sparkles" [size]="16"></app-icon>
@@ -85,7 +85,7 @@ import { IconComponent } from '../../../shared/icons/icon.component';
           </div>
 
           <!-- Footer highlight -->
-          <div class="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+          <div class="hidden sm:flex relative z-10 pt-4 border-t border-white/10 items-center justify-between text-[11px] text-slate-400">
             <span>Institutional Portal</span>
             <span class="text-emerald-400 font-semibold flex items-center gap-1">
               <app-icon name="shield-check" [size]="14"></app-icon>
@@ -95,7 +95,7 @@ import { IconComponent } from '../../../shared/icons/icon.component';
         </div>
 
         <!-- Right Column: Authentication Form (7 cols) -->
-        <div class="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between bg-slate-50/50">
+        <div class="lg:col-span-7 p-5 sm:p-10 flex flex-col justify-between bg-slate-50/50">
           <div>
             <div class="mb-6">
               <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Sign in to your account</h2>

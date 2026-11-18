@@ -1,12 +1,23 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { HeaderComponent } from '../header/header.component';
 import { ToastContainerComponent } from '../../shared/ui/toast.component';
 import { CallOverlayComponent } from '../../shared/ui/call-overlay.component';
 import { AuthService } from '../../core/services/auth.service';
 import { LayoutService } from '../../core/services/layout.service';
+import { ChatService } from '../../core/services/chat.service';
+import { IconComponent } from '../../shared/icons/icon.component';
+import { UserRole } from '../../core/models/user.model';
+
+export interface MobileNavTab {
+  label: string;
+  route: string;
+  icon: string;
+  exact?: boolean;
+  badge?: () => number;
+}
 
 @Component({
   selector: 'app-main-layout',
@@ -14,10 +25,13 @@ import { LayoutService } from '../../core/services/layout.service';
   imports: [
     CommonModule,
     RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
     SidebarComponent,
     HeaderComponent,
     ToastContainerComponent,
-    CallOverlayComponent
+    CallOverlayComponent,
+    IconComponent
   ],
   template: `
     <div
@@ -50,11 +64,38 @@ import { LayoutService } from '../../core/services/layout.service';
       <div class="main-area flex flex-col min-w-0 overflow-hidden">
         <!-- Scrollable Page Content Area -->
         <div class="main-content flex-1 overflow-y-auto overflow-x-hidden min-w-0 custom-scrollbar">
-          <main class="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto min-w-0">
+          <main class="p-3 sm:p-6 lg:p-8 pb-20 md:pb-6 lg:pb-8 max-w-7xl w-full mx-auto min-w-0">
             <router-outlet></router-outlet>
           </main>
         </div>
       </div>
+
+      <!-- Sticky Bottom Navigation Bar (Mobile Only: md:hidden) -->
+      <nav
+        class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg px-2 py-1 flex items-center justify-around h-16 select-none"
+        aria-label="Mobile Navigation"
+      >
+        <a
+          *ngFor="let tab of mobileNavTabs()"
+          [routerLink]="tab.route"
+          routerLinkActive="active-mobile-tab"
+          [routerLinkActiveOptions]="{ exact: tab.exact ?? false }"
+          class="flex flex-col items-center justify-center flex-1 py-1 px-1 text-slate-500 hover:text-slate-800 transition-colors relative min-w-0"
+          [attr.aria-label]="tab.label"
+        >
+          <div class="relative flex items-center justify-center">
+            <app-icon [name]="tab.icon" [size]="20"></app-icon>
+            <span
+              *ngIf="tab.badge && tab.badge() > 0"
+              class="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white"
+            >
+              {{ tab.badge() > 99 ? '99+' : tab.badge() }}
+            </span>
+          </div>
+          <span class="text-[10px] font-medium tracking-tight mt-1 truncate max-w-full leading-none">{{ tab.label }}</span>
+          <span class="mobile-tab-indicator absolute bottom-0 w-8 h-0.5 bg-blue-600 rounded-full opacity-0 scale-75 transition-all"></span>
+        </a>
+      </nav>
 
       <!-- Global Floating Toast Container -->
       <app-toast-container></app-toast-container>
@@ -88,6 +129,21 @@ import { LayoutService } from '../../core/services/layout.service';
         width: calc(100% - var(--sidebar-width, 76px));
       }
     }
+    @media (max-width: 767px) {
+      :host {
+        height: 100dvh;
+      }
+      .app-shell {
+        --navbar-height: 64px !important;
+        height: 100dvh;
+        max-height: 100dvh;
+      }
+      .main-area {
+        margin-top: 64px !important;
+        height: calc(100dvh - 64px) !important;
+        max-height: calc(100dvh - 64px) !important;
+      }
+    }
     .custom-scrollbar::-webkit-scrollbar {
       width: 6px;
     }
@@ -106,4 +162,47 @@ import { LayoutService } from '../../core/services/layout.service';
 export class MainLayoutComponent {
   authService = inject(AuthService);
   layoutService = inject(LayoutService);
+  chatService = inject(ChatService);
+
+  activeRole = computed<UserRole>(() => this.authService.activeRole());
+
+  mobileNavTabs = computed<MobileNavTab[]>(() => {
+    const role = this.activeRole();
+    switch (role) {
+      case 'student':
+        return [
+          { label: 'Home', route: '/student/dashboard', icon: 'layout-dashboard', exact: true },
+          { label: 'Jobs', route: '/student/jobs', icon: 'briefcase' },
+          { label: 'Applied', route: '/student/applications', icon: 'file-text' },
+          { label: 'Chat', route: '/student/chat', icon: 'message-square', badge: () => this.chatService.totalUnreadCount() },
+          { label: 'Profile', route: '/student/profile', icon: 'user' }
+        ];
+      case 'alumni':
+        return [
+          { label: 'Home', route: '/alumni/dashboard', icon: 'layout-dashboard', exact: true },
+          { label: 'Students', route: '/alumni/students', icon: 'users' },
+          { label: 'Chat', route: '/alumni/chat', icon: 'message-square', badge: () => this.chatService.totalUnreadCount() },
+          { label: 'Drive', route: '/alumni/resources', icon: 'folder' },
+          { label: 'Profile', route: '/alumni/profile', icon: 'user' }
+        ];
+      case 'recruiter':
+        return [
+          { label: 'Home', route: '/recruiter/dashboard', icon: 'layout-dashboard', exact: true },
+          { label: 'Drives', route: '/recruiter/drives', icon: 'calendar' },
+          { label: 'Jobs', route: '/recruiter/jobs', icon: 'briefcase' },
+          { label: 'Applicants', route: '/recruiter/applicants', icon: 'users' },
+          { label: 'Chat', route: '/recruiter/chat', icon: 'message-square', badge: () => this.chatService.totalUnreadCount() }
+        ];
+      case 'admin':
+        return [
+          { label: 'Home', route: '/admin/dashboard', icon: 'layout-dashboard', exact: true },
+          { label: 'Analytics', route: '/admin/analytics', icon: 'bar-chart-2' },
+          { label: 'Students', route: '/admin/students', icon: 'users' },
+          { label: 'Jobs', route: '/admin/jobs', icon: 'briefcase' },
+          { label: 'Command', route: '/admin/command-center', icon: 'activity' }
+        ];
+      default:
+        return [];
+    }
+  });
 }

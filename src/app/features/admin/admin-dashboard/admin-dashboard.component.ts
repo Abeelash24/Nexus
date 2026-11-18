@@ -326,7 +326,7 @@ export type AnalyticsDrawerType = 'placement-rate' | 'average-ctc' | 'pipeline-f
       ></div>
 
       <!-- Slide-Over Container -->
-      <div class="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+      <div class="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
         <div class="w-screen max-w-2xl sm:max-w-3xl bg-white shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-300">
           
           <!-- Drawer Header -->
