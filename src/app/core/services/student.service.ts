@@ -28,40 +28,67 @@ export class StudentService {
   // Current logged in student profile
   currentStudent = computed(() => {
     const user = this.authService.currentUser();
-    if (!user) return this.studentsSignal()[0];
+    if (!user) {
+      return this.createEmptyStudent('guest', 'Guest Student');
+    }
 
     const match = this.studentsSignal().find(
-      s => s.userId === user.id || s.email.toLowerCase() === user.email.toLowerCase()
+      s => s.userId === user.id || (s.email && s.email.toLowerCase() === user.email.toLowerCase())
     );
 
     const userAvatar = user.avatarUrl || match?.avatarUrl || match?.profilePhoto || undefined;
 
     if (match) {
-      if (userAvatar && (match.avatarUrl !== userAvatar || match.profilePhoto !== userAvatar)) {
-        return { ...match, avatarUrl: userAvatar, profilePhoto: userAvatar };
-      }
-      return match;
+      return {
+        ...match,
+        fullName: user.fullName || match.fullName,
+        avatarUrl: userAvatar,
+        profilePhoto: userAvatar || '',
+        phone: user.phone || match.phone || '',
+        department: user.department || match.department || 'Engineering',
+        rollNumber: user.rollNumber || match.rollNumber || ''
+      };
     }
 
-    // Create dynamic student representation for newly logged in user without hardcoded test fixtures
+    // Dynamic clean student representation for newly logged in user without hardcoded test fixtures
+    return this.createEmptyStudent(
+      user.id,
+      user.fullName || 'Student',
+      user.email,
+      userAvatar,
+      user.phone || '',
+      user.department || 'Engineering',
+      user.rollNumber || ''
+    );
+  });
+
+  createEmptyStudent(
+    userId: string,
+    fullName: string,
+    email: string = '',
+    avatarUrl?: string,
+    phone: string = '',
+    department: string = '',
+    rollNumber: string = ''
+  ): Student {
     return {
-      id: `s-${user.id}`,
-      userId: user.id,
-      fullName: user.fullName || 'Student',
-      email: user.email,
-      profilePhoto: userAvatar || '',
-      avatarUrl: userAvatar,
-      phone: user.phone || '',
-      department: user.department || 'Computer Science & Engineering',
+      id: `s-${userId}`,
+      userId: userId,
+      fullName: fullName,
+      email: email,
+      profilePhoto: avatarUrl || '',
+      avatarUrl: avatarUrl,
+      phone: phone,
+      department: department || 'Engineering',
       course: 'B.Tech',
       batch: '2023-2027',
       graduationYear: 2027,
-      rollNumber: user.rollNumber || '',
-      cgpa: 7.50,
-      tenthPercentage: 85.0,
-      twelfthPercentage: 85.0,
-      skills: ['C++', 'Java', 'SQL', 'TypeScript'],
-      preferredDomain: 'Software Development',
+      rollNumber: rollNumber,
+      cgpa: 0,
+      tenthPercentage: 0,
+      twelfthPercentage: 0,
+      skills: [],
+      preferredDomain: '',
       bio: '',
       githubUrl: '',
       linkedinUrl: '',
@@ -69,14 +96,14 @@ export class StudentService {
       resumeUrl: '',
       resumeFileName: '',
       placementStatus: 'Not Placed',
-      profileCompletion: 50,
+      profileCompletion: 0,
       isActive: true,
       projects: [],
       certifications: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    } as Student;
-  });
+    };
+  }
 
   // Statistics
   stats = computed(() => {
@@ -150,15 +177,15 @@ export class StudentService {
 
   mapDbRowToStudent(row: any): Student {
     const avatar = row.avatar_url || row.profile_photo || undefined;
-    return {
+    const s: Student = {
       id: row.id,
       userId: row.user_id,
-      fullName: row.full_name,
-      email: row.email,
+      fullName: row.full_name || '',
+      email: row.email || '',
       profilePhoto: avatar || '',
       avatarUrl: avatar,
       phone: row.phone || '',
-      department: row.department || 'Computer Science & Engineering',
+      department: row.department || '',
       departmentId: row.department_id,
       programId: row.program_id,
       batchId: row.batch_id,
@@ -166,11 +193,11 @@ export class StudentService {
       batch: row.batch || '2023-2027',
       graduationYear: row.graduation_year || 2027,
       rollNumber: row.roll_number || '',
-      cgpa: Number(row.cgpa) || 7.50,
-      tenthPercentage: Number(row.tenth_percentage) || 85.0,
-      twelfthPercentage: Number(row.twelfth_percentage) || 85.0,
-      skills: row.skills || ['Java', 'SQL'],
-      preferredDomain: row.preferred_domain || 'Software Development',
+      cgpa: row.cgpa !== null && row.cgpa !== undefined ? Number(row.cgpa) : 0,
+      tenthPercentage: row.tenth_percentage !== null && row.tenth_percentage !== undefined ? Number(row.tenth_percentage) : 0,
+      twelfthPercentage: row.twelfth_percentage !== null && row.twelfth_percentage !== undefined ? Number(row.twelfth_percentage) : 0,
+      skills: Array.isArray(row.skills) ? row.skills : [],
+      preferredDomain: row.preferred_domain || '',
       bio: row.bio || '',
       githubUrl: row.github_url || '',
       linkedinUrl: row.linkedin_url || '',
@@ -180,33 +207,78 @@ export class StudentService {
       placementStatus: (row.placement_status as PlacementStatus) || 'Not Placed',
       placedCompany: row.placed_company || '',
       placedPackage: row.placed_package || '',
-      profileCompletion: row.profile_completion || 70,
+      profileCompletion: 0,
       isActive: row.is_active ?? true,
-      projects: row.projects || [],
-      certifications: row.certifications || [],
+      projects: Array.isArray(row.projects) ? row.projects : [],
+      certifications: Array.isArray(row.certifications) ? row.certifications : [],
       customFields: row.custom_fields || {},
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+    s.profileCompletion = this.calculateProfileCompletion(s);
+    return s;
   }
 
   async loadStudentForCurrentUser(): Promise<Student | null> {
-    const user = this.authService.currentUser();
-    if (!user) return null;
+    const auth = this.supabase.auth;
     const client = this.supabase.getClient();
     if (!this.supabase.isConfigured || !client) return null;
 
     try {
-      const { data, error } = await client
+      let user = this.authService.currentUser();
+      if (!user && auth) {
+        const { data: { user: authUser } } = await auth.getUser();
+        if (authUser) {
+          user = {
+            id: authUser.id,
+            email: authUser.email || '',
+            role: (authUser.user_metadata?.['role'] as any) || 'student',
+            fullName: authUser.user_metadata?.['full_name'] || '',
+            avatarUrl: authUser.user_metadata?.['avatar_url'] || undefined,
+            createdAt: authUser.created_at
+          };
+        }
+      }
+
+      if (!user) return null;
+
+      const { data: sRow, error: sErr } = await client
         .from('students')
         .select('*')
         .or(`user_id.eq.${user.id},email.ilike.${user.email}`)
         .maybeSingle();
 
-      if (data && !error) {
-        const student = this.mapDbRowToStudent(data);
+      const { data: uRow } = await client
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (sRow) {
+        const student = this.mapDbRowToStudent(sRow);
+        if (uRow) {
+          student.fullName = uRow.full_name || student.fullName;
+          student.avatarUrl = uRow.avatar_url || student.avatarUrl;
+          student.profilePhoto = uRow.avatar_url || student.profilePhoto;
+          student.phone = uRow.phone || student.phone;
+          student.department = uRow.department || student.department;
+          student.rollNumber = uRow.roll_number || student.rollNumber;
+        }
+        student.profileCompletion = this.calculateProfileCompletion(student);
         this.addStudentDirectly(student);
         return student;
+      } else if (uRow) {
+        const empty = this.createEmptyStudent(
+          user.id,
+          uRow.full_name || user.email?.split('@')[0] || 'Student',
+          user.email || '',
+          uRow.avatar_url,
+          uRow.phone || '',
+          uRow.department || '',
+          uRow.roll_number || ''
+        );
+        this.addStudentDirectly(empty);
+        return empty;
       }
     } catch (err) {
       console.warn('Could not load student for current user:', err);
@@ -244,9 +316,13 @@ export class StudentService {
     };
     updated.profileCompletion = this.calculateProfileCompletion(updated);
 
-    this.studentsSignal.update(list =>
-      list.map(s => (s.id === updated.id || s.userId === updated.userId) ? updated : s)
-    );
+    this.studentsSignal.update(list => {
+      const exists = list.some(s => s.id === updated.id || s.userId === updated.userId || (s.email && s.email.toLowerCase() === updated.email.toLowerCase()));
+      if (exists) {
+        return list.map(s => (s.id === updated.id || s.userId === updated.userId || (s.email && s.email.toLowerCase() === updated.email.toLowerCase())) ? updated : s);
+      }
+      return [updated, ...list];
+    });
     this.saveStudentsToCache(this.studentsSignal());
 
     const client = this.supabase.getClient();
@@ -281,11 +357,18 @@ export class StudentService {
           .eq('user_id', updated.userId);
 
         if (error) {
-          console.warn('Could not update student profile in Supabase:', error.message);
+          console.warn('Could not update student profile in Supabase, trying upsert:', error.message);
+          await client.from('students').upsert({
+            ...payload,
+            user_id: updated.userId,
+            email: updated.email,
+            roll_number: updated.rollNumber,
+            department: updated.department
+          }, { onConflict: 'user_id' });
         }
 
-        // Also sync public.users.avatar_url
-        if (payload.avatar_url && updated.userId) {
+        // Also sync public.users
+        if (updated.userId) {
           await client.from('users').update({
             avatar_url: payload.avatar_url,
             full_name: updated.fullName,
@@ -482,17 +565,10 @@ export class StudentService {
   private generateFallbackResumeData(fileName: string, filePath: string): ParsedResumeData {
     const current = this.currentStudent();
     return {
-      skills: current.skills?.length ? current.skills : ['Java', 'SQL', 'TypeScript', 'Angular', 'REST APIs', 'Git'],
-      cgpa: current.cgpa || 8.0,
-      phone: current.phone || '+91 9876543210',
-      projects: current.projects?.length ? current.projects : [
-        {
-          id: `proj-${Date.now()}-1`,
-          title: 'Campus Placement System',
-          description: 'Engineered responsive full-stack platform with authentication and real-time database.',
-          technologies: ['Angular', 'TypeScript', 'Tailwind CSS', 'Supabase']
-        }
-      ],
+      skills: current.skills?.length ? current.skills : [],
+      cgpa: current.cgpa || null,
+      phone: current.phone || null,
+      projects: current.projects?.length ? current.projects : [],
       filePath: filePath
     };
   }

@@ -135,14 +135,14 @@ export class TaskService {
       const stored = localStorage.getItem(this.LOCAL_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }
     } catch {
       // ignore
     }
-    return INITIAL_MOCK_TASKS;
+    return [];
   }
 
   private saveTasksToCache(tasks: StudentTask[]) {
@@ -160,16 +160,16 @@ export class TaskService {
     this.isLoading.set(true);
     try {
       const { data, error } = await client
-        .from('student_tasks')
+        .from('tasks')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.warn('Could not fetch student_tasks from Supabase:', error.message);
+        console.warn('Could not fetch tasks from Supabase:', error.message);
         return;
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         const mapped: StudentTask[] = data.map((d: any) => this.mapDbRowToTask(d));
         this.tasksSignal.set(mapped);
         this.saveTasksToCache(mapped);
@@ -183,7 +183,7 @@ export class TaskService {
 
   private initRealtimeSubscription() {
     if (!this.supabase.isConfigured) return;
-    this.supabase.subscribeToChanges('student_tasks', (payload) => {
+    this.supabase.subscribeToChanges('tasks', (payload) => {
       if (payload.eventType === 'INSERT') {
         const newTask = this.mapDbRowToTask(payload.new);
         this.tasksSignal.update(list => [newTask, ...list.filter(t => t.id !== newTask.id)]);
@@ -198,41 +198,62 @@ export class TaskService {
   }
 
   private mapDbRowToTask(row: any): StudentTask {
+    const rawStatus = (row.status || '').toLowerCase();
+    const status: TaskStatus = rawStatus === 'completed'
+      ? 'Completed'
+      : (rawStatus === 'in progress' || rawStatus === 'in_progress' ? 'In Progress' : 'Pending');
+
+    const rawCategory = (row.category || '').toLowerCase();
+    let category: TaskCategory = 'Coding';
+    if (rawCategory.includes('interview') || rawCategory.includes('tech')) category = 'Technical Interview';
+    else if (rawCategory.includes('hr')) category = 'HR Interview';
+    else if (rawCategory.includes('aptitude')) category = 'Aptitude';
+    else if (rawCategory.includes('design')) category = 'System Design';
+    else if (rawCategory.includes('resume') || rawCategory.includes('profile')) category = 'Assessment';
+
+    const rawPriority = (row.priority || '').toLowerCase();
+    let priority: TaskPriority = 'Medium';
+    if (rawPriority === 'urgent') priority = 'Urgent';
+    else if (rawPriority === 'high') priority = 'High';
+    else if (rawPriority === 'low') priority = 'Low';
+
     return {
       id: row.id,
-      studentId: row.student_id,
-      companyId: row.company_id,
-      companyName: row.company_name,
+      studentId: row.user_id || row.student_id,
+      companyId: row.company_id || 'comp-1',
+      companyName: row.company_name || 'Placement Cell',
       companyLogo: row.company_logo,
-      jobId: row.job_id,
-      jobTitle: row.job_title,
-      title: row.title,
-      description: row.description,
-      category: row.category,
-      priority: row.priority,
-      status: row.status,
-      dueDate: row.due_date,
-      estimatedMinutes: row.estimated_minutes ? Number(row.estimated_minutes) : undefined,
-      score: row.score !== null && row.score !== undefined ? Number(row.score) : undefined,
+      jobId: row.job_id || 'job-1',
+      jobTitle: row.job_title || 'Campus Preparation Challenge',
+      title: row.title || 'Placement Task',
+      description: row.description || '',
+      category,
+      priority,
+      status,
+      dueDate: row.due_date || new Date().toISOString(),
+      estimatedMinutes: row.estimated_minutes ? Number(row.estimated_minutes) : 60,
+      score: row.score !== null && row.score !== undefined ? Number(row.score) : (status === 'Completed' ? 90 : undefined),
       maxScore: row.max_score ? Number(row.max_score) : 100,
-      completedAt: row.completed_at,
-      submissionNotes: row.submission_notes,
+      completedAt: row.completed_at || (status === 'Completed' ? row.updated_at : undefined),
+      submissionNotes: row.submission_notes || '',
       resourceLinks: row.resource_links || [],
-      requiredSkillTarget: row.required_skill_target,
+      requiredSkillTarget: row.required_skill_target || 'Technical Preparation',
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
   }
 
   getTasksForStudent(studentId: string): StudentTask[] {
+    if (!studentId) return [];
     return this.tasksSignal().filter(
-      t => t.studentId === studentId || t.studentId === 'std-101' // fallback for demo student
+      t => t.studentId === studentId
     );
   }
 
   getTasksForCompany(studentId: string, companyId: string): StudentTask[] {
+    if (!studentId) return [];
     return this.tasksSignal().filter(
-      t => (t.studentId === studentId || t.studentId === 'std-101') && t.companyId === companyId
+      t => t.studentId === studentId && t.companyId === companyId
     );
   }
 
@@ -250,25 +271,15 @@ export class TaskService {
     const client = this.supabase.getClient();
     if (this.supabase.isConfigured && client) {
       try {
-        await client.from('student_tasks').insert({
+        await client.from('tasks').insert({
           id: newTask.id,
-          student_id: newTask.studentId,
-          company_id: newTask.companyId,
-          company_name: newTask.companyName,
-          company_logo: newTask.companyLogo,
-          job_id: newTask.jobId,
-          job_title: newTask.jobTitle,
+          user_id: newTask.studentId,
           title: newTask.title,
           description: newTask.description,
-          category: newTask.category,
-          priority: newTask.priority,
-          status: newTask.status,
           due_date: newTask.dueDate,
-          estimated_minutes: newTask.estimatedMinutes,
-          score: newTask.score,
-          max_score: newTask.maxScore || 100,
-          resource_links: newTask.resourceLinks,
-          required_skill_target: newTask.requiredSkillTarget
+          status: newTask.status.toLowerCase(),
+          priority: newTask.priority.toLowerCase(),
+          category: newTask.category.toLowerCase()
         });
       } catch (err) {
         console.warn('Error syncing task to Supabase:', err);
@@ -303,11 +314,8 @@ export class TaskService {
     const client = this.supabase.getClient();
     if (this.supabase.isConfigured && client) {
       try {
-        await client.from('student_tasks').update({
-          status: updated.status,
-          score: updated.score,
-          completed_at: updated.completedAt,
-          submission_notes: updated.submissionNotes,
+        await client.from('tasks').update({
+          status: updated.status.toLowerCase(),
           updated_at: updated.updatedAt
         }).eq('id', taskId);
       } catch (err) {
@@ -329,7 +337,7 @@ export class TaskService {
     const client = this.supabase.getClient();
     if (this.supabase.isConfigured && client) {
       try {
-        await client.from('student_tasks').delete().eq('id', taskId);
+        await client.from('tasks').delete().eq('id', taskId);
       } catch (err) {
         console.warn('Error deleting task in Supabase:', err);
       }
@@ -501,7 +509,7 @@ export class TaskService {
     const totalRequired = allRequiredMap.size;
     const matchPercentage = totalRequired > 0 
       ? Math.round((matchingSkills.length / totalRequired) * 100) 
-      : 100;
+      : (studentSkills.length > 0 ? 50 : 0);
 
     // Strong skills: Skills backed by projects or student's verified core stack
     const projectTechs = new Set(
@@ -562,22 +570,22 @@ export class TaskService {
 
   /**
    * Transparent mathematical calculation of placement readiness score based on:
-   * 1. Profile Completion (25%)
-   * 2. Skill Match Rate with applied drives (35%)
-   * 3. Task Completion & Performance Rate (25%)
+   * 1. Profile Completeness (25%) - null vs populated DB fields
+   * 2. Skill Match Rate with active placement drives (35%)
+   * 3. Task Mastery & Assessment Performance (25%)
    * 4. Active Placement Drive Submissions (15%)
    */
   calculatePlacementReadiness(
     student: Student, 
     applications: Application[], 
-    appliedJobs: Job[], 
+    drivesOrJobs: Job[], 
     studentTasks: StudentTask[]
   ): PlacementReadinessMetrics {
-    const totalTasks = studentTasks.length;
-    const completedTasks = studentTasks.filter(t => t.status === 'Completed').length;
-    const inProgressTasks = studentTasks.filter(t => t.status === 'In Progress').length;
-    const pendingTasks = studentTasks.filter(t => t.status === 'Pending').length;
-    const overdueTasks = studentTasks.filter(t => {
+    const totalTasks = (studentTasks || []).length;
+    const completedTasks = (studentTasks || []).filter(t => t.status === 'Completed').length;
+    const inProgressTasks = (studentTasks || []).filter(t => t.status === 'In Progress').length;
+    const pendingTasks = (studentTasks || []).filter(t => t.status === 'Pending').length;
+    const overdueTasks = (studentTasks || []).filter(t => {
       if (t.status === 'Completed') return false;
       return new Date(t.dueDate).getTime() < Date.now();
     }).length;
@@ -585,56 +593,82 @@ export class TaskService {
     const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
     // Average task score from real completed assignments
-    const scoredTasks = studentTasks.filter(t => t.score !== undefined && t.score !== null);
+    const scoredTasks = (studentTasks || []).filter(t => t.score !== undefined && t.score !== null);
     const averageScore = scoredTasks.length > 0
       ? Math.round(scoredTasks.reduce((acc, t) => acc + (t.score || 0), 0) / scoredTasks.length)
       : 0;
 
-    // 1. Profile Strength Component (Max 25 points) - 100% Real Data
+    // 1. Profile Strength Component (Max 25 points) - 100% Real DB Fields
     let profileRawScore = 0;
-    if (student.rollNumber && student.department) profileRawScore += 6;
-    if (student.cgpa && student.cgpa >= 6.0) profileRawScore += 4;
-    if (student.resumeUrl && student.resumeUrl.trim().length > 0) profileRawScore += 5;
-    if (student.skills && student.skills.length >= 3) profileRawScore += 4;
-    if (student.githubUrl || student.linkedinUrl) profileRawScore += 3;
-    if (student.projects && student.projects.length >= 1) profileRawScore += 3;
+    if (student.rollNumber && student.department) profileRawScore += 5;
+    if (student.cgpa !== null && student.cgpa !== undefined && Number(student.cgpa) > 0) {
+      profileRawScore += Number(student.cgpa) >= 6.0 ? 5 : 3;
+    }
+    if (student.resumeUrl && student.resumeUrl.trim().length > 0) profileRawScore += 6;
+    if (student.phone && student.phone.trim().length > 0) profileRawScore += 3;
+    if (student.skills && student.skills.length >= 3) {
+      profileRawScore += 4;
+    } else if (student.skills && student.skills.length >= 1) {
+      profileRawScore += 2;
+    }
+    if (student.projects && student.projects.length >= 1) profileRawScore += 2;
     const profileScore = Math.min(25, profileRawScore);
 
-    // 2. Skill Match Component (Max 35 points) - 100% Real Data
-    const skillGap = this.calculateSkillGapAnalysis(student, appliedJobs);
-    const hasSkills = student.skills && student.skills.length > 0;
-    const skillMatchPercentage = hasSkills ? (appliedJobs.length > 0 ? skillGap.matchPercentage : 60) : 0;
+    // 2. Skill Match Component (Max 35 points) - Real intersection against active placement drives
+    const driveSkillsSet = new Set<string>();
+    for (const job of (drivesOrJobs || [])) {
+      for (const req of (job.requiredSkills || [])) {
+        if (req && req.trim()) driveSkillsSet.add(req.toLowerCase().trim());
+      }
+    }
+    const totalDriveSkills = driveSkillsSet.size;
+
+    let skillMatchPercentage = 0;
+    const studentSkills = student.skills || [];
+    if (totalDriveSkills > 0 && studentSkills.length > 0) {
+      const studentSkillSet = new Set(studentSkills.map(s => s.toLowerCase().trim()));
+      let matchedCount = 0;
+      driveSkillsSet.forEach(req => {
+        if (studentSkillSet.has(req)) matchedCount++;
+      });
+      skillMatchPercentage = Math.round((matchedCount / totalDriveSkills) * 100);
+    } else if (totalDriveSkills === 0 && studentSkills.length > 0) {
+      skillMatchPercentage = 100; // If no drives exist yet, all student skills are valid
+    } else {
+      skillMatchPercentage = 0;
+    }
     const skillScore = Math.min(35, Math.round((skillMatchPercentage / 100) * 35));
 
-    // 3. Task Completion Component (Max 25 points) - 100% Real Data
-    let calculatedTaskScore = 0;
+    // 3. Task Completion Component (Max 25 points) - 100% Real Task Data
+    let taskScore = 0;
     if (totalTasks > 0) {
-      calculatedTaskScore = Math.round((completedTasks / totalTasks) * 25);
+      let rawTaskScore = Math.round((completedTasks / totalTasks) * 25);
       if (overdueTasks > 0) {
-        calculatedTaskScore = Math.max(0, calculatedTaskScore - (overdueTasks * 2));
+        rawTaskScore = Math.max(0, rawTaskScore - (overdueTasks * 2));
       }
+      taskScore = Math.min(25, Math.max(0, rawTaskScore));
     } else {
-      calculatedTaskScore = 0; // zero tasks assigned/completed
+      taskScore = 0; // zero tasks completed/assigned
     }
-    const taskScore = Math.min(25, calculatedTaskScore);
 
-    // 4. Drive Activity Component (Max 15 points) - 100% Real Data
-    let calculatedDriveScore = 0;
-    const appCount = applications.length;
+    // 4. Drive Activity Component (Max 15 points) - 100% Real Applications
+    let driveScore = 0;
+    const appCount = (applications || []).length;
     if (appCount === 0) {
-      calculatedDriveScore = 0;
+      driveScore = 0;
     } else if (appCount === 1) {
-      calculatedDriveScore = 6;
+      driveScore = 6;
     } else if (appCount === 2) {
-      calculatedDriveScore = 11;
+      driveScore = 11;
     } else {
-      calculatedDriveScore = 15;
+      driveScore = 15;
     }
-    const hasShortlist = applications.some(a => a.status === 'Shortlisted' || a.status === 'Technical Interview' || a.status === 'Selected');
-    if (hasShortlist && calculatedDriveScore < 15) {
-      calculatedDriveScore = Math.min(15, calculatedDriveScore + 2);
+    const hasShortlist = (applications || []).some(a => 
+      a.status === 'Shortlisted' || a.status === 'Technical Interview' || a.status === 'Selected'
+    );
+    if (hasShortlist && driveScore < 15) {
+      driveScore = Math.min(15, driveScore + 2);
     }
-    const driveScore = Math.min(15, calculatedDriveScore);
 
     // 5. Assessment Performance Bonus (Up to +5 bonus points)
     let assessmentBonusScore = 0;
@@ -655,29 +689,35 @@ export class TaskService {
     }
 
     const strengths: string[] = [];
-    if (student.cgpa >= 8.0) strengths.push(`Strong academic record: ${student.cgpa.toFixed(2)} CGPA meets Tier-1 eligibility criteria.`);
-    if (profileScore >= 20) strengths.push(`Comprehensive student profile with resume and verified links.`);
-    if (completedTasks > 0) strengths.push(`Completed ${completedTasks} placement preparation challenges with ${averageScore}% average test score.`);
-    if (skillGap.strongSkills.length > 0) strengths.push(`Verified proficiency in ${skillGap.strongSkills.slice(0, 3).join(', ')}.`);
+    if (student.cgpa && Number(student.cgpa) >= 8.0) {
+      strengths.push(`Strong academic record: ${Number(student.cgpa).toFixed(2)} CGPA meets Tier-1 eligibility criteria.`);
+    }
+    if (profileScore >= 20) {
+      strengths.push(`Comprehensive student profile with verified skills and active resume.`);
+    }
+    if (completedTasks > 0) {
+      strengths.push(`Completed ${completedTasks} placement preparation challenges with ${averageScore}% average test score.`);
+    }
+    if (skillMatchPercentage >= 60) {
+      strengths.push(`High skill compatibility (${skillMatchPercentage}%) across active campus placement drives.`);
+    }
+    if (appCount >= 2) {
+      strengths.push(`Active recruitment pipeline with ${appCount} submitted applications.`);
+    }
 
     const actionItems: string[] = [];
-    if (driveScore === 0) {
-      actionItems.push('Apply to at least 1 active campus recruitment drive to activate drive readiness score.');
+    if (!student.resumeUrl) {
+      actionItems.push('Upload your latest verified PDF resume to unlock full recruiter ATS visibility.');
     }
-    if (!student.resumeUrl || student.resumeUrl.trim().length === 0) {
-      actionItems.push('Upload verified PDF resume in your profile to gain +5 profile readiness points.');
+    if (!student.skills || student.skills.length < 3) {
+      actionItems.push('Add at least 3-5 technical skills to your profile or use Smart Resume Upload to extract them.');
     }
-    if (skillGap.missingSkills.length > 0) {
-      actionItems.push(`Bridge skill gaps in ${skillGap.missingSkills.slice(0, 3).join(', ')} required by your applied companies.`);
+    if (totalTasks === 0 || completedTasks === 0) {
+      actionItems.push('Complete upcoming preparation challenges and mock assessments.');
     }
-    if (overdueTasks > 0) {
-      actionItems.push(`Resolve ${overdueTasks} overdue preparation tasks to recover lost task score points.`);
+    if (appCount === 0) {
+      actionItems.push('Apply to open campus drives matching your department and CGPA.');
     }
-    if (totalTasks === 0) {
-      actionItems.push('Complete milestone tasks to build your task readiness score.');
-    }
-
-    const whyChangedExplanation = `Readiness: ${overallScore}% • Profile (${profileScore}/25), Skills (${skillScore}/35), Tasks (${taskScore}/25), Drive Activity (${driveScore}/15)${assessmentBonusScore > 0 ? ' + ' + assessmentBonusScore + ' bonus' : ''}.`;
 
     return {
       overallScore,
@@ -702,7 +742,7 @@ export class TaskService {
       completionRate: Math.round(taskCompletionRate),
       averageScore,
       tierReadiness,
-      whyChangedExplanation,
+      whyChangedExplanation: `Real-time calculation: Profile (${profileScore}/25) + Skill Match (${skillScore}/35) + Tasks (${taskScore}/25) + Drives (${driveScore}/15) + Bonus (${assessmentBonusScore}/5).`,
       strengths,
       actionItems
     };

@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StudentService } from '../../../core/services/student.service';
@@ -67,14 +67,18 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
                 <app-badge [variant]="student().placementStatus === 'Selected' ? 'success' : 'warning'">
                   {{ student().placementStatus }}
                 </app-badge>
-                <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                <span *ngIf="student().resumeUrl" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                   <app-icon name="check-circle" [size]="12"></app-icon>
                   Verified ATS Resume
+                </span>
+                <span *ngIf="!student().resumeUrl" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                  <app-icon name="alert-circle" [size]="12"></app-icon>
+                  Pending Resume Upload
                 </span>
               </div>
 
               <p class="text-sm font-medium text-slate-600">
-                {{ student().course || 'B.Tech' }} in {{ student().department }} • Roll: <strong class="text-slate-900 font-semibold">{{ student().rollNumber }}</strong>
+                {{ student().course || 'B.Tech' }} in {{ student().department }} • Roll: <strong class="text-slate-900 font-semibold">{{ student().rollNumber || 'N/A' }}</strong>
                 <span *ngIf="student().batch"> • Batch: {{ student().batch }}</span>
               </p>
 
@@ -82,12 +86,12 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
               <div class="flex flex-wrap items-center gap-4 mt-3 text-xs text-slate-500">
                 <span class="flex items-center gap-1.5">
                   <app-icon name="award" [size]="14" customClass="text-blue-600"></app-icon>
-                  CGPA: <strong class="text-slate-900 text-sm">{{ student().cgpa.toFixed(2) }} / 10.0</strong>
+                  CGPA: <strong class="text-slate-900 text-sm">{{ (+student().cgpa || 0).toFixed(2) }} / 10.0</strong>
                 </span>
-                <span class="flex items-center gap-1.5">
+                <span *ngIf="student().tenthPercentage" class="flex items-center gap-1.5">
                   <span class="font-semibold text-slate-700">10th:</span> {{ student().tenthPercentage }}%
                 </span>
-                <span class="flex items-center gap-1.5">
+                <span *ngIf="student().twelfthPercentage" class="flex items-center gap-1.5">
                   <span class="font-semibold text-slate-700">12th:</span> {{ student().twelfthPercentage }}%
                 </span>
                 <span class="flex items-center gap-1.5 text-slate-600">
@@ -406,7 +410,7 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
           </span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" *ngIf="student().skills && student().skills.length > 0">
           <!-- Programming Languages -->
           <div class="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-2.5">
             <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
@@ -487,8 +491,21 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
               <span *ngFor="let s of skillGap().categorizedSkills.coreSubjects" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-800">
                 {{ s }}
               </span>
-              <span *ngIf="skillGap().categorizedSkills.coreSubjects.length === 0" class="text-xs text-slate-400 italic">Data Structures, Algorithms, OOP, OS</span>
+              <span *ngIf="skillGap().categorizedSkills.coreSubjects.length === 0" class="text-xs text-slate-400 italic">None logged</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Empty state when no skills in database -->
+        <div *ngIf="!student().skills || student().skills.length === 0" class="p-8 rounded-2xl bg-slate-50 border border-slate-200/80 text-center space-y-3">
+          <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+            <app-icon name="code" [size]="22"></app-icon>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-slate-800">No Technical Skills Indexed</h4>
+            <p class="text-xs text-slate-500 max-w-md mx-auto mt-1">
+              Upload your PDF resume above or edit your profile to add technical skills and trigger real-time skill matching against active placement drives.
+            </p>
           </div>
         </div>
       </div>
@@ -1015,7 +1032,7 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
           </button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" *ngIf="student().projects && student().projects.length > 0">
           <div
             *ngFor="let proj of student().projects"
             class="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-blue-200 hover:shadow-md transition-all flex flex-col justify-between group"
@@ -1067,6 +1084,27 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
             </div>
           </div>
         </div>
+
+        <!-- Empty state when no projects in database -->
+        <div *ngIf="!student().projects || student().projects.length === 0" class="p-8 rounded-2xl bg-slate-50 border border-slate-200/80 text-center space-y-3">
+          <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+            <app-icon name="folder" [size]="22"></app-icon>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-slate-800">No Technical Projects Listed</h4>
+            <p class="text-xs text-slate-500 max-w-md mx-auto mt-1">
+              Add your engineering projects manually or upload your PDF resume in the Smart Resume zone to automatically extract and showcase your software projects.
+            </p>
+          </div>
+          <button
+            type="button"
+            (click)="showAddProjectModal.set(true)"
+            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors"
+          >
+            <app-icon name="plus" [size]="14"></app-icon>
+            Add First Project
+          </button>
+        </div>
       </div>
 
       <!-- ========================================================================= -->
@@ -1088,7 +1126,7 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
           </button>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" *ngIf="student().certifications && student().certifications.length > 0">
           <div
             *ngFor="let cert of student().certifications"
             class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex items-center gap-3"
@@ -1110,6 +1148,10 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
               <app-icon name="external-link" [size]="16"></app-icon>
             </a>
           </div>
+        </div>
+
+        <div *ngIf="!student().certifications || student().certifications.length === 0" class="p-6 rounded-2xl bg-slate-50 text-center text-slate-400 text-xs">
+          No industry certifications added yet. Click Add Certificate above to document your credentials.
         </div>
       </div>
     </div>
@@ -1643,7 +1685,7 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
     </div>
   `
 })
-export class StudentProfileComponent {
+export class StudentProfileComponent implements OnInit {
   studentService = inject(StudentService);
   applicationService = inject(ApplicationService);
   jobService = inject(JobService);
@@ -1653,9 +1695,43 @@ export class StudentProfileComponent {
   toast = inject(ToastService);
 
   isDownloadingResume = signal(false);
+  isLoadingLive = signal(false);
 
   student = this.studentService.currentStudent;
   studentApplications = this.applicationService.studentApplications;
+
+  async ngOnInit() {
+    await this.loadLiveStudentData();
+  }
+
+  async loadLiveStudentData() {
+    const auth = this.supabase.auth;
+    if (!auth) return;
+
+    this.isLoadingLive.set(true);
+    try {
+      // 1. Fetch authenticated user UUID
+      const userRes = await auth.getUser();
+      const user = userRes?.data?.user;
+      if (!user) return;
+
+      // 2. Query public.students and public.users directly
+      await this.studentService.loadStudentForCurrentUser();
+
+      // 3. Query public.applications for real active pipeline count
+      await this.applicationService.fetchApplicationsFromDatabase();
+
+      // 4. Query public.tasks for real tasks
+      await this.taskService.fetchTasksFromDatabase();
+
+      // 5. Query public.jobs for real placement drives
+      await this.jobService.fetchJobsFromDatabase();
+    } catch (err) {
+      console.warn('Live data fetch error on student profile:', err);
+    } finally {
+      this.isLoadingLive.set(false);
+    }
+  }
 
   // Phase 1: Company Skill Match Overview (Dynamic calculation from DB)
   companySkillMatchOverview = computed(() => {
@@ -1674,7 +1750,7 @@ export class StudentProfileComponent {
 
   studentTasks = computed(() => {
     const s = this.student();
-    return this.taskService.getTasksForStudent(s.id || s.userId);
+    return this.taskService.getTasksForStudent(s.userId || s.id);
   });
 
   taskFilter = signal<'all' | 'pending' | 'completed'>('all');
@@ -1702,15 +1778,13 @@ export class StudentProfileComponent {
     return this.taskService.calculateSkillGapAnalysis(this.student(), appliedJobs);
   });
 
-  // Placement Readiness metrics computed
+  // Dynamic Placement Readiness metrics computed against active campus placement drives
   readiness = computed(() => {
-    const appliedJobs = this.studentApplications()
-      .map(a => this.jobService.getJobById(a.jobId))
-      .filter((j): j is any => !!j);
+    const drives = this.jobService.activeJobs();
     return this.taskService.calculatePlacementReadiness(
       this.student(),
       this.studentApplications(),
-      appliedJobs,
+      drives,
       this.studentTasks()
     );
   });

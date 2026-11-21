@@ -1,4 +1,4 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { StudentService } from '../../../core/services/student.service';
@@ -9,6 +9,7 @@ import { SkillMatchingService } from '../../../core/services/skill-matching.serv
 import { AlumniService } from '../../../core/services/alumni.service';
 import { ResourceService } from '../../../core/services/resource.service';
 import { ChatService } from '../../../core/services/chat.service';
+import { SupabaseService } from '../../../core/services/supabase.service';
 import { StudentTask } from '../../../core/models/task.model';
 import { IconComponent } from '../../../shared/icons/icon.component';
 import { StatCardComponent } from '../../../shared/ui/stat-card.component';
@@ -583,7 +584,7 @@ import { StatusTimelineComponent } from '../../../shared/ui/status-timeline.comp
     </div>
   `
 })
-export class StudentDashboardComponent {
+export class StudentDashboardComponent implements OnInit {
   studentService = inject(StudentService);
   jobService = inject(JobService);
   applicationService = inject(ApplicationService);
@@ -592,9 +593,32 @@ export class StudentDashboardComponent {
   alumniService = inject(AlumniService);
   resourceService = inject(ResourceService);
   chatService = inject(ChatService);
+  supabase = inject(SupabaseService);
   router = inject(Router);
 
   student = this.studentService.currentStudent;
+
+  async ngOnInit() {
+    await this.loadLiveDashboardData();
+  }
+
+  async loadLiveDashboardData() {
+    const auth = this.supabase.auth;
+    if (!auth) return;
+
+    try {
+      const userRes = await auth.getUser();
+      const user = userRes?.data?.user;
+      if (!user) return;
+
+      await this.studentService.loadStudentForCurrentUser();
+      await this.applicationService.fetchApplicationsFromDatabase();
+      await this.taskService.fetchTasksFromDatabase();
+      await this.jobService.fetchJobsFromDatabase();
+    } catch (err) {
+      console.warn('Live data fetch error on student dashboard:', err);
+    }
+  }
 
   // Phase 1: Company Skill Matches for dashboard
   companySkillMatches = computed(() => {
@@ -606,7 +630,7 @@ export class StudentDashboardComponent {
 
   allTasks = computed(() => {
     const s = this.student();
-    return this.taskService.getTasksForStudent(s.id || s.userId);
+    return this.taskService.getTasksForStudent(s.userId || s.id);
   });
 
   activeTasks = computed(() => {
@@ -670,13 +694,11 @@ export class StudentDashboardComponent {
   });
 
   readiness = computed(() => {
-    const appliedJobs = this.applicationService.studentApplications()
-      .map(a => this.jobService.getJobById(a.jobId))
-      .filter((j): j is any => !!j);
+    const drives = this.jobService.activeJobs();
     return this.taskService.calculatePlacementReadiness(
       this.student(),
       this.applicationService.studentApplications(),
-      appliedJobs,
+      drives,
       this.allTasks()
     );
   });

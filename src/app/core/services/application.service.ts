@@ -44,12 +44,15 @@ export class ApplicationService {
     try {
       const stored = localStorage.getItem(this.LOCAL_STORAGE_KEY);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
       }
     } catch {
       // ignore
     }
-    return MOCK_APPLICATIONS;
+    return [];
   }
 
   private saveApplicationsToCache(apps: Application[]) {
@@ -76,7 +79,7 @@ export class ApplicationService {
         return;
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         const mapped: Application[] = data.map((d: any) => this.mapDbRowToApplication(d));
         this.applicationsSignal.set(mapped);
         this.saveApplicationsToCache(mapped);
