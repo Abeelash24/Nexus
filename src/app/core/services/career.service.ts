@@ -91,41 +91,7 @@ export class CareerService {
     } catch {
       // ignore
     }
-    return [
-      {
-        id: 'mock-1',
-        studentId: 'std-101',
-        companyName: 'Google',
-        jobRole: 'Software Development Engineer',
-        sessionTitle: 'Google SDE Full-Stack & System Design Simulation',
-        totalQuestions: 4,
-        completedQuestions: 4,
-        answers: [
-          {
-            questionId: 'q-tech-1',
-            questionText: 'Explain the difference between indexing using B-Trees vs Hash Tables in PostgreSQL.',
-            category: 'Technical',
-            userNotesOrAnswer: 'B-Trees allow range queries in O(log N) and are used by default. Hash indexes only support O(1) equality lookups.',
-            selfConfidenceScore: 5,
-            feedbackNotes: 'Excellent concise answer. Addressed range scanning correctly.',
-            recordedAt: '2026-09-24T10:00:00Z'
-          },
-          {
-            questionId: 'q-hr-1',
-            questionText: 'Why do you want to join our engineering team over other tech companies?',
-            category: 'HR',
-            userNotesOrAnswer: 'Passionate about planet-scale distributed systems and open-source infrastructure.',
-            selfConfidenceScore: 4,
-            feedbackNotes: 'Good passion shown. Mention specific products you are excited about.',
-            recordedAt: '2026-09-24T10:15:00Z'
-          }
-        ],
-        weakAreasIdentified: ['High-concurrency distributed locking', 'Multi-region failover replication'],
-        strongAreasIdentified: ['SQL Indexing', 'Algorithmic complexity', 'Clear communication'],
-        createdAt: '2026-09-24T09:30:00Z',
-        completedAt: '2026-09-24T10:20:00Z'
-      }
-    ];
+    return [];
   }
 
   private saveInterviewsToCache(list: MockInterviewSession[]) {

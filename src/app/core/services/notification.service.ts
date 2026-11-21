@@ -1,6 +1,5 @@
 import { Injectable, signal, computed, inject, OnDestroy, effect } from '@angular/core';
 import { NotificationItem, NotificationType } from '../models/notification.model';
-import { MOCK_NOTIFICATIONS } from '../data/mock-data';
 import { ToastService } from './toast.service';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
@@ -13,7 +12,7 @@ export class NotificationService implements OnDestroy {
   private authService = inject(AuthService);
   private toast = inject(ToastService);
 
-  private notificationsSignal = signal<NotificationItem[]>(MOCK_NOTIFICATIONS);
+  private notificationsSignal = signal<NotificationItem[]>([]);
   private realtimeChannel: any = null;
 
   notifications = computed(() => this.notificationsSignal());
@@ -104,7 +103,7 @@ export class NotificationService implements OnDestroy {
         return;
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         const mapped: NotificationItem[] = data.map((d: any) => ({
           id: d.id,
           userId: d.user_id,

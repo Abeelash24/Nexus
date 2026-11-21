@@ -6,7 +6,6 @@ import {
   ContactMethod,
   ContactVisibility
 } from '../models/alumni.model';
-import { CURATED_ALUMNI } from '../data/curated-alumni';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
@@ -57,7 +56,41 @@ export class AlumniService implements OnDestroy {
 
   currentAlumni = computed(() => {
     const user = this.authService.currentUser();
-    if (!user) return this.alumniSignal()[0] || CURATED_ALUMNI[0];
+    if (!user) {
+      if (this.alumniSignal().length > 0) return this.alumniSignal()[0];
+      return {
+        id: 'a-guest',
+        userId: 'guest',
+        alumniId: 'ALUM-GUEST',
+        fullName: 'Alumni Member',
+        email: '',
+        profilePhoto: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+        graduationYear: 2024,
+        department: 'Computer Science & Engineering',
+        company: 'Corporate Partner',
+        companyLogo: 'https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=128&auto=format&fit=crop&q=80',
+        designation: 'Software Engineer',
+        experienceYears: 2.0,
+        skills: ['System Design', 'Cloud Architecture'],
+        preferredDomains: ['Software Development'],
+        industry: 'Software & Technology',
+        location: 'Bengaluru, India',
+        mentorshipTopics: ['Career Guidance', 'Placement Prep'],
+        bio: 'Alumni mentor.',
+        linkedinUrl: '',
+        websiteUrl: '',
+        availableForMentoring: true,
+        isVerified: true,
+        verifiedAt: new Date().toISOString(),
+        contactVisibility: 'connected_only',
+        contactMethods: [],
+        menteesCount: 0,
+        rating: 5.0,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      } as Alumni;
+    }
 
     const match = this.alumniSignal().find(
       a => a.userId === user.id || a.email.toLowerCase() === user.email.toLowerCase()
@@ -246,14 +279,14 @@ export class AlumniService implements OnDestroy {
       const stored = localStorage.getItem(this.LOCAL_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }
     } catch {
       // ignore
     }
-    return CURATED_ALUMNI;
+    return [];
   }
 
   private loadInitialConnections(): AlumniConnection[] {
@@ -339,21 +372,14 @@ export class AlumniService implements OnDestroy {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.warn('Could not fetch alumni from Supabase, retaining curated verified profiles:', error.message);
+        console.warn('Could not fetch alumni from Supabase:', error.message);
         return;
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         const dbAlumni: Alumni[] = data.map((d: any) => this.mapDbRowToAlumni(d));
-
-        // Merge: keep all curated verified alumni and overlay/append DB records
-        const alumniMap = new Map<string, Alumni>();
-        CURATED_ALUMNI.forEach(a => alumniMap.set(a.userId, a));
-        dbAlumni.forEach(a => alumniMap.set(a.userId, a));
-
-        const merged = Array.from(alumniMap.values());
-        this.alumniSignal.set(merged);
-        this.saveAlumniToCache(merged);
+        this.alumniSignal.set(dbAlumni);
+        this.saveAlumniToCache(dbAlumni);
       }
     } catch (e) {
       console.warn('Alumni fetch exception:', e);

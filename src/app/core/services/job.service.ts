@@ -1,6 +1,5 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { Job } from '../models/job.model';
-import { MOCK_JOBS } from '../data/mock-data';
 import { SupabaseService } from './supabase.service';
 import { ToastService } from './toast.service';
 import { AuthService } from './auth.service';
@@ -30,12 +29,13 @@ export class JobService {
     try {
       const stored = localStorage.getItem(this.LOCAL_STORAGE_KEY);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // ignore
     }
-    return MOCK_JOBS;
+    return [];
   }
 
   private saveJobsToCache(jobs: Job[]) {
@@ -62,7 +62,7 @@ export class JobService {
         return;
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         const mapped: Job[] = data.map((d: any) => this.mapDbRowToJob(d));
         this.jobsSignal.set(mapped);
         this.saveJobsToCache(mapped);

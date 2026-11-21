@@ -1,6 +1,5 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { Application, ApplicationStatus, ApplicationTimelineEvent } from '../models/application.model';
-import { MOCK_APPLICATIONS } from '../data/mock-data';
 import { StudentService } from './student.service';
 import { JobService } from './job.service';
 import { TaskService } from './task.service';

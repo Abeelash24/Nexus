@@ -1,6 +1,5 @@
 import { Injectable, signal, computed, inject, OnDestroy } from '@angular/core';
 import { Conversation, ChatMessage, MessageType } from '../models/message.model';
-import { MOCK_CONVERSATIONS, MOCK_MESSAGES } from '../data/mock-data';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
 import { SupabaseService } from './supabase.service';

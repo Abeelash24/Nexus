@@ -7,7 +7,6 @@ import {
   ResourceType,
   RESOURCE_CATEGORIES
 } from '../models/resource.model';
-import { CURATED_RESOURCE_FOLDERS, CURATED_RESOURCES } from '../data/curated-resources';
 import { ToastService } from './toast.service';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
@@ -22,8 +21,8 @@ export class ResourceService {
 
   private readonly BOOKMARKS_STORAGE_KEY = 'careernexus_resource_bookmarks';
 
-  private foldersSignal = signal<ResourceFolder[]>(CURATED_RESOURCE_FOLDERS);
-  private filesSignal = signal<ResourceFile[]>(CURATED_RESOURCES);
+  private foldersSignal = signal<ResourceFolder[]>([]);
+  private filesSignal = signal<ResourceFile[]>([]);
   private currentFolderIdSignal = signal<string | null>(null);
   private isLoadingSignal = signal<boolean>(false);
   private localBookmarksSignal = signal<Set<string>>(this.loadLocalBookmarks());
@@ -89,11 +88,11 @@ export class ResourceService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.warn('Could not fetch folders from Supabase, retaining curated folders:', error);
+        console.warn('Could not fetch folders from Supabase:', error);
         return;
       }
 
-      if (data && data.length > 0) {
+      if (!error && data) {
         const dbFolders: ResourceFolder[] = data.map((d: any) => ({
           id: d.id,
           name: d.name,
@@ -106,12 +105,7 @@ export class ResourceService {
           updatedAt: d.updated_at
         }));
 
-        // Merge: keep all curated folders and add any custom folders created in DB
-        const curatedMap = new Map<string, ResourceFolder>();
-        CURATED_RESOURCE_FOLDERS.forEach(f => curatedMap.set(f.id, f));
-        dbFolders.forEach(f => curatedMap.set(f.id, f));
-
-        this.foldersSignal.set(Array.from(curatedMap.values()));
+        this.foldersSignal.set(dbFolders);
       }
     } catch (err) {
       console.warn('Error loading folders:', err);
@@ -152,15 +146,11 @@ export class ResourceService {
           .order('created_at', { ascending: false });
 
         if (error) {
-          console.warn('Could not fetch files from Supabase, applying bookmarks to curated resources:', error);
-          // Apply bookmarks to curated resources
-          this.filesSignal.update(list =>
-            list.map(f => ({ ...f, isBookmarked: bookmarkSet.has(f.id) }))
-          );
+          console.warn('Could not fetch files from Supabase:', error);
           return;
         }
 
-        if (data) {
+        if (!error && data) {
           const dbFiles: ResourceFile[] = data.map((d: any) => {
             const rawStorageType = d.storage_type || (d.external_url ? 'external' : 'storage');
             return {
@@ -198,34 +188,13 @@ export class ResourceService {
             };
           });
 
-          // Merge: Start with curated files (with bookmark state) and overlay DB files
-          const filesMap = new Map<string, ResourceFile>();
-          CURATED_RESOURCES.forEach(f => {
-            filesMap.set(f.id, {
-              ...f,
-              isBookmarked: bookmarkSet.has(f.id)
-            });
-          });
-
-          dbFiles.forEach(f => {
-            filesMap.set(f.id, f);
-          });
-
-          this.filesSignal.set(Array.from(filesMap.values()));
+          this.filesSignal.set(dbFiles);
         }
       } catch (err) {
         console.warn('Error loading files:', err);
-        this.filesSignal.update(list =>
-          list.map(f => ({ ...f, isBookmarked: bookmarkSet.has(f.id) }))
-        );
       } finally {
         this.isLoadingSignal.set(false);
       }
-    } else {
-      // Offline / no client: update bookmarks
-      this.filesSignal.update(list =>
-        list.map(f => ({ ...f, isBookmarked: bookmarkSet.has(f.id) }))
-      );
     }
   }
 

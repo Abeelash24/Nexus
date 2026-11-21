@@ -20,200 +20,11 @@ const STORAGE_KEYS = {
   OFFERS: 'careernexus_drive_offers_cache'
 };
 
-const INITIAL_DRIVES: PlacementDrive[] = [
-  {
-    id: 'drv-google-2026',
-    companyId: 'comp-google',
-    companyName: 'Google',
-    companyLogo: 'https://images.unsplash.com/photo-1572021335469-31706a17aaef?w=150&auto=format&fit=crop&q=80',
-    title: 'Google Campus Placement Drive 2026',
-    roleDesignation: 'Software Development Engineer I',
-    description: 'On-campus recruitment drive for 2026 and 2027 graduating cohorts. Evaluation across data structures, system design, and Go/Java development.',
-    eligibleDepartments: ['Computer Science & Engineering', 'Information Technology', 'Electronics & Communication'],
-    minimumCgpa: 8.0,
-    maxBacklogs: 0,
-    requiredSkills: ['Data Structures & Algorithms', 'Java', 'Python', 'System Design', 'Git'],
-    applicationDeadline: new Date(Date.now() + 10 * 86400000).toISOString(),
-    driveDate: new Date(Date.now() + 14 * 86400000).toISOString(),
-    mode: 'Hybrid',
-    venue: 'Campus Tech Hall / Google Meet Virtual Assessment',
-    salaryCtc: '₹32 - ₹45 LPA',
-    status: 'In Progress',
-    currentRoundNumber: 2,
-    totalRounds: 4,
-    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    applicantCount: 42
-  },
-  {
-    id: 'drv-microsoft-2026',
-    companyId: 'comp-msft',
-    companyName: 'Microsoft',
-    companyLogo: 'https://images.unsplash.com/photo-1642132652809-8c6ef031dcf7?w=150&auto=format&fit=crop&q=80',
-    title: 'Microsoft College Hiring Wave',
-    roleDesignation: 'Cloud Solutions & Software Engineer',
-    description: 'Full-time campus intake for Azure Cloud Infrastructure and Core Software Engineering engineering teams.',
-    eligibleDepartments: ['Computer Science & Engineering', 'Information Technology'],
-    minimumCgpa: 7.5,
-    maxBacklogs: 0,
-    requiredSkills: ['C#', 'TypeScript', 'Azure', 'Algorithms', 'SQL'],
-    applicationDeadline: new Date(Date.now() + 15 * 86400000).toISOString(),
-    driveDate: new Date(Date.now() + 20 * 86400000).toISOString(),
-    mode: 'Online',
-    venue: 'Microsoft Teams Assessment Portal',
-    salaryCtc: '₹28 - ₹36 LPA',
-    status: 'Applications Open',
-    currentRoundNumber: 1,
-    totalRounds: 3,
-    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    applicantCount: 38
-  },
-  {
-    id: 'drv-amazon-2026',
-    companyId: 'comp-amazon',
-    companyName: 'Amazon',
-    companyLogo: 'https://images.unsplash.com/photo-1523474255658-4af61b1684c2?w=150&auto=format&fit=crop&q=80',
-    title: 'Amazon SDE University Hiring',
-    roleDesignation: 'Software Development Engineer',
-    description: 'Annual placement drive focusing on Leadership Principles, scalable distributed systems, and real-time coding challenges.',
-    eligibleDepartments: ['Computer Science & Engineering', 'Information Technology', 'Electronics & Communication'],
-    minimumCgpa: 7.0,
-    maxBacklogs: 1,
-    requiredSkills: ['Java', 'Object Oriented Programming', 'AWS', 'Data Structures', 'REST API'],
-    applicationDeadline: new Date(Date.now() + 5 * 86400000).toISOString(),
-    driveDate: new Date(Date.now() + 8 * 86400000).toISOString(),
-    mode: 'Online',
-    venue: 'Amazon Chime & HackerRank Platform',
-    salaryCtc: '₹26 - ₹34 LPA',
-    status: 'Screening',
-    currentRoundNumber: 1,
-    totalRounds: 4,
-    createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    applicantCount: 56
-  }
-];
+const INITIAL_DRIVES: PlacementDrive[] = [];
+const INITIAL_ROUNDS: DriveRound[] = [];
+const INITIAL_SLOTS: InterviewSlot[] = [];
+const INITIAL_OFFERS: DriveOffer[] = [];
 
-const INITIAL_ROUNDS: DriveRound[] = [
-  {
-    id: 'rnd-g-1',
-    driveId: 'drv-google-2026',
-    roundOrder: 1,
-    roundName: 'Round 1: Online Coding Challenge',
-    roundType: 'Coding Assessment',
-    scheduledAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-    durationMinutes: 90,
-    description: '3 algorithmic problems on dynamic programming, graph traversal, and arrays.',
-    venueOrLink: 'Google Online Assessment Platform',
-    status: 'Completed',
-    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'rnd-g-2',
-    driveId: 'drv-google-2026',
-    roundOrder: 2,
-    roundName: 'Round 2: Technical Problem Solving',
-    roundType: 'Technical Interview',
-    scheduledAt: new Date(Date.now() + 2 * 86400000).toISOString(),
-    durationMinutes: 45,
-    description: '1-on-1 live coding session defending time complexity and optimal space allocation.',
-    venueOrLink: 'https://meet.google.com/nexus-tech-round2',
-    status: 'In Progress',
-    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'rnd-g-3',
-    driveId: 'drv-google-2026',
-    roundOrder: 3,
-    roundName: 'Round 3: System Architecture & Core CS',
-    roundType: 'Technical Interview',
-    scheduledAt: new Date(Date.now() + 4 * 86400000).toISOString(),
-    durationMinutes: 45,
-    description: 'Operating systems, network protocols, database transactions, and scalable architecture.',
-    venueOrLink: 'https://meet.google.com/nexus-system-round3',
-    status: 'Pending',
-    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'rnd-g-4',
-    driveId: 'drv-google-2026',
-    roundOrder: 4,
-    roundName: 'Round 4: Googliness & Leadership',
-    roundType: 'HR Interview',
-    scheduledAt: new Date(Date.now() + 6 * 86400000).toISOString(),
-    durationMinutes: 30,
-    description: 'Behavioral scenarios, cross-functional collaboration, and cultural alignment.',
-    venueOrLink: 'https://meet.google.com/nexus-hr-round4',
-    status: 'Pending',
-    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
-
-const INITIAL_SLOTS: InterviewSlot[] = [
-  {
-    id: 'slt-101',
-    driveId: 'drv-google-2026',
-    roundId: 'rnd-g-2',
-    studentId: 'std-101',
-    studentName: 'Aarav Sharma',
-    studentRoll: '2023CSE042',
-    interviewerName: 'Senior Google Staff Engineer',
-    interviewerEmail: 'interviewer.g@google.com',
-    slotDate: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
-    startTime: '10:00 AM',
-    endTime: '10:45 AM',
-    meetingLink: 'https://meet.google.com/nexus-slot-101',
-    venue: 'Google Meet Room A',
-    status: 'Scheduled',
-    feedback: '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'slt-102',
-    driveId: 'drv-google-2026',
-    roundId: 'rnd-g-2',
-    studentId: 'std-102',
-    studentName: 'Priya Patel',
-    studentRoll: '2023IT019',
-    interviewerName: 'Principal Tech Lead',
-    interviewerEmail: 'techlead.g@google.com',
-    slotDate: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
-    startTime: '11:00 AM',
-    endTime: '11:45 AM',
-    meetingLink: 'https://meet.google.com/nexus-slot-102',
-    venue: 'Google Meet Room B',
-    status: 'Scheduled',
-    feedback: '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
-
-const INITIAL_OFFERS: DriveOffer[] = [
-  {
-    id: 'ofr-901',
-    driveId: 'drv-google-2026',
-    studentId: 'std-101',
-    studentName: 'Aarav Sharma',
-    studentEmail: 'aarav.sharma@careernexus.edu',
-    companyName: 'Google',
-    roleDesignation: 'Software Development Engineer I',
-    ctcPackage: '₹42 LPA',
-    baseSalary: '₹22 LPA',
-    joiningDate: '2027-07-01',
-    offerLetterUrl: 'https://careernexus.edu/docs/offers/google-sde-aarav.pdf',
-    status: 'Offered',
-    acceptanceDeadline: new Date(Date.now() + 14 * 86400000).toISOString(),
-    createdAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
 
 @Injectable({
   providedIn: 'root'
@@ -223,10 +34,10 @@ export class PlacementDriveService {
   private toast = inject(ToastService);
   private auditLog = inject(AuditLogService);
 
-  private drivesSignal = signal<PlacementDrive[]>(this.loadCache(STORAGE_KEYS.DRIVES, INITIAL_DRIVES));
-  private roundsSignal = signal<DriveRound[]>(this.loadCache(STORAGE_KEYS.ROUNDS, INITIAL_ROUNDS));
-  private slotsSignal = signal<InterviewSlot[]>(this.loadCache(STORAGE_KEYS.SLOTS, INITIAL_SLOTS));
-  private offersSignal = signal<DriveOffer[]>(this.loadCache(STORAGE_KEYS.OFFERS, INITIAL_OFFERS));
+  private drivesSignal = signal<PlacementDrive[]>(this.loadCache(STORAGE_KEYS.DRIVES, []));
+  private roundsSignal = signal<DriveRound[]>(this.loadCache(STORAGE_KEYS.ROUNDS, []));
+  private slotsSignal = signal<InterviewSlot[]>(this.loadCache(STORAGE_KEYS.SLOTS, []));
+  private offersSignal = signal<DriveOffer[]>(this.loadCache(STORAGE_KEYS.OFFERS, []));
 
   isLoading = signal<boolean>(false);
 
@@ -348,7 +159,7 @@ export class PlacementDriveService {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!driveErr && driveData && driveData.length > 0) {
+      if (!driveErr && driveData) {
         const formatted: PlacementDrive[] = driveData.map((d: any) => ({
           id: d.id,
           companyId: d.company_id || 'comp-default',
@@ -393,7 +204,7 @@ export class PlacementDriveService {
         .select('*')
         .order('round_order', { ascending: true });
 
-      if (roundData && roundData.length > 0) {
+      if (roundData) {
         const formattedRounds: DriveRound[] = roundData.map((r: any) => ({
           id: r.id,
           driveId: r.drive_id,
@@ -418,7 +229,7 @@ export class PlacementDriveService {
         .select('*')
         .order('slot_date', { ascending: true });
 
-      if (slotData && slotData.length > 0) {
+      if (slotData) {
         const formattedSlots: InterviewSlot[] = slotData.map((s: any) => ({
           id: s.id,
           driveId: s.drive_id,
@@ -447,7 +258,7 @@ export class PlacementDriveService {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (offerData && offerData.length > 0) {
+      if (offerData) {
         const formattedOffers: DriveOffer[] = offerData.map((o: any) => ({
           id: o.id,
           driveId: o.drive_id,

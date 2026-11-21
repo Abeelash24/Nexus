@@ -1,6 +1,5 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { Company } from '../models/company.model';
-import { MOCK_COMPANIES } from '../data/mock-data';
 import { SupabaseService } from './supabase.service';
 import { ToastService } from './toast.service';
 
@@ -26,12 +25,13 @@ export class CompanyService {
     try {
       const stored = localStorage.getItem(this.LOCAL_STORAGE_KEY);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // ignore
     }
-    return MOCK_COMPANIES;
+    return [];
   }
 
   private saveCompaniesToCache(list: Company[]) {
@@ -58,7 +58,7 @@ export class CompanyService {
         return;
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         const mapped: Company[] = data.map((d: any) => this.mapDbRowToCompany(d));
         this.companiesSignal.set(mapped);
         this.saveCompaniesToCache(mapped);

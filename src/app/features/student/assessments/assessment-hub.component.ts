@@ -137,6 +137,16 @@ import { IconComponent } from '../../../shared/icons/icon.component';
             </div>
           </div>
         </div>
+
+        <div *ngIf="filteredAssessments().length === 0" class="p-12 rounded-3xl bg-white border border-slate-200 text-center space-y-3">
+          <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+            <app-icon name="award" [size]="24"></app-icon>
+          </div>
+          <h3 class="text-base font-bold text-slate-800">No Assessments Available</h3>
+          <p class="text-xs text-slate-500 max-w-sm mx-auto">
+            Upcoming aptitude benchmarks and technical coding challenges will stream here once published.
+          </p>
+        </div>
       </div>
 
       <!-- ========================================================================= -->

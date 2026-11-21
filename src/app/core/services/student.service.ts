@@ -1,6 +1,5 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { Student, Project, Certification, PlacementStatus, ParsedResumeData } from '../models/student.model';
-import { MOCK_STUDENTS } from '../data/mock-data';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
@@ -136,7 +135,7 @@ export class StudentService {
     } catch {
       // ignore
     }
-    return MOCK_STUDENTS;
+    return [];
   }
 
   private saveStudentsToCache(list: Student[]) {
@@ -163,7 +162,7 @@ export class StudentService {
         return;
       }
 
-      if (data && data.length > 0) {
+      if (!error && data) {
         const mapped: Student[] = data.map((d: any) => this.mapDbRowToStudent(d));
         this.studentsSignal.set(mapped);
         this.saveStudentsToCache(mapped);

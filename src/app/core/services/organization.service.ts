@@ -17,576 +17,11 @@ import { ApplicationService } from './application.service';
 import { JobService } from './job.service';
 import { AlumniService } from './alumni.service';
 
-export const INITIAL_DEPARTMENTS: Department[] = [
-  {
-    id: 'd-01',
-    code: 'CSE',
-    name: 'Computer Science & Engineering',
-    headOfDepartment: 'Dr. Ramesh Kumar, Ph.D. (IIT Madras)',
-    contactEmail: 'hod.cse@careernexus.edu',
-    contactPhone: '+91 44 2257 8001',
-    description: 'Premier department specializing in distributed systems, algorithms, AI/ML, cloud computing, and cybersecurity with strong Tier-1 industry partnerships.',
-    establishedYear: 1988,
-    buildingLocation: 'Alan Turing Computing Complex, Blocks A & B',
-    isActive: true
-  },
-  {
-    id: 'd-02',
-    code: 'IT',
-    name: 'Information Technology',
-    headOfDepartment: 'Dr. Sunita Sharma, Ph.D. (IISc Bangalore)',
-    contactEmail: 'hod.it@careernexus.edu',
-    contactPhone: '+91 44 2257 8002',
-    description: 'Center of excellence in full-stack web engineering, DevOps, enterprise SaaS, cloud networking, and modern data platforms.',
-    establishedYear: 1999,
-    buildingLocation: 'Ada Lovelace IT Block, 3rd Floor',
-    isActive: true
-  },
-  {
-    id: 'd-03',
-    code: 'AI&DS',
-    name: 'Artificial Intelligence & Data Science',
-    headOfDepartment: 'Dr. Vikram Patel, Ph.D. (Carnegie Mellon)',
-    contactEmail: 'hod.aids@careernexus.edu',
-    contactPhone: '+91 44 2257 8003',
-    description: 'Pioneering multidisciplinary program focused on Deep Learning, Large Language Models, Computer Vision, MLOps, and Big Data Analytics.',
-    establishedYear: 2020,
-    buildingLocation: 'Generative Intelligence Research Hub, Level 2',
-    isActive: true
-  },
-  {
-    id: 'd-04',
-    code: 'ECE',
-    name: 'Electronics & Communication',
-    headOfDepartment: 'Dr. Ananya Reddy, Ph.D. (IIT Delhi)',
-    contactEmail: 'hod.ece@careernexus.edu',
-    contactPhone: '+91 44 2257 8004',
-    description: 'Specializing in VLSI design, semiconductor hardware, embedded IoT, 5G wireless networks, and high-performance digital signal processing.',
-    establishedYear: 1992,
-    buildingLocation: 'Shannon Signal Processing & VLSI Pavilion',
-    isActive: true
-  },
-  {
-    id: 'd-05',
-    code: 'EEE',
-    name: 'Electrical & Electronics Engineering',
-    headOfDepartment: 'Dr. Rajesh Nair, Ph.D. (IIT Bombay)',
-    contactEmail: 'hod.eee@careernexus.edu',
-    contactPhone: '+91 44 2257 8005',
-    description: 'Pioneering smart grid power electronics, electric vehicle powertrains, renewable energy systems, and industrial control automation.',
-    establishedYear: 1985,
-    buildingLocation: 'Nikola Tesla Power & Energy Systems Block',
-    isActive: true
-  },
-  {
-    id: 'd-06',
-    code: 'MECH',
-    name: 'Mechanical Engineering',
-    headOfDepartment: 'Dr. Arvind Joshi, Ph.D. (IIT Kharagpur)',
-    contactEmail: 'hod.mech@careernexus.edu',
-    contactPhone: '+91 44 2257 8006',
-    description: 'Excelling in robotics, automated manufacturing, computational fluid dynamics (CFD), finite element analysis (FEA), and thermodynamic systems.',
-    establishedYear: 1982,
-    buildingLocation: 'Boulton & Watt Mechanical Engineering Labs',
-    isActive: true
-  }
-];
+export const INITIAL_DEPARTMENTS: Department[] = [];
+export const INITIAL_PROGRAMS: Program[] = [];
+export const INITIAL_SUBJECTS: Subject[] = [];
+export const INITIAL_BATCHES: Batch[] = [];
 
-export const INITIAL_PROGRAMS: Program[] = [
-  {
-    id: 'p-01',
-    departmentId: 'd-01',
-    departmentCode: 'CSE',
-    departmentName: 'Computer Science & Engineering',
-    code: 'BTECH-CSE',
-    name: 'Bachelor of Technology in Computer Science & Engineering',
-    degreeLevel: 'Undergraduate',
-    durationYears: 4,
-    totalCredits: 168,
-    description: 'Flagship 4-year undergraduate curriculum covering core computing theory, systems programming, dynamic software architecture, and modern placement preparation.',
-    eligibility: '10+2 with minimum 75% in Physics, Chemistry, and Mathematics (PCM) or equivalent entrance score.',
-    admissionInfo: 'Admissions via Centralized University Counseling / Merit Ranking.',
-    isActive: true
-  },
-  {
-    id: 'p-02',
-    departmentId: 'd-01',
-    departmentCode: 'CSE',
-    departmentName: 'Computer Science & Engineering',
-    code: 'MTECH-CSE',
-    name: 'Master of Technology in Computer Science & Engineering',
-    degreeLevel: 'Postgraduate',
-    durationYears: 2,
-    totalCredits: 72,
-    description: 'Advanced postgraduate research program in high-performance distributed systems, distributed consensus, compiler design, and neural networks.',
-    eligibility: 'B.E./B.Tech in CSE/IT or MCA with valid GATE or University Postgraduate Entrance Score.',
-    admissionInfo: 'Interview & research proposal evaluation.',
-    isActive: true
-  },
-  {
-    id: 'p-03',
-    departmentId: 'd-01',
-    departmentCode: 'CSE',
-    departmentName: 'Computer Science & Engineering',
-    code: 'MCA',
-    name: 'Master of Computer Applications',
-    degreeLevel: 'Postgraduate',
-    durationYears: 2,
-    totalCredits: 80,
-    description: 'Industry-oriented professional master degree emphasizing full-stack software development, cloud infrastructure, enterprise databases, and modern UI architectures.',
-    eligibility: 'Bachelor Degree in BCA/B.Sc Computer Science or relevant degree with Mathematics at 10+2 level.',
-    admissionInfo: 'Direct merit & entrance examination.',
-    isActive: true
-  },
-  {
-    id: 'p-04',
-    departmentId: 'd-02',
-    departmentCode: 'IT',
-    departmentName: 'Information Technology',
-    code: 'BTECH-IT',
-    name: 'Bachelor of Technology in Information Technology',
-    degreeLevel: 'Undergraduate',
-    durationYears: 4,
-    totalCredits: 165,
-    description: 'Comprehensive 4-year undergraduate degree in modern web systems, enterprise database architectures, distributed networking, and software quality engineering.',
-    eligibility: '10+2 with minimum 70% in PCM.',
-    admissionInfo: 'Admissions via State/National Engineering Rank.',
-    isActive: true
-  },
-  {
-    id: 'p-05',
-    departmentId: 'd-03',
-    departmentCode: 'AI&DS',
-    departmentName: 'Artificial Intelligence & Data Science',
-    code: 'BTECH-AIDS',
-    name: 'Bachelor of Technology in AI & Data Science',
-    degreeLevel: 'Undergraduate',
-    durationYears: 4,
-    totalCredits: 170,
-    description: 'Industry-partnered 4-year undergraduate specialization in deep learning, natural language processing, computer vision, data pipelines, and MLOps deployment.',
-    eligibility: '10+2 with minimum 75% in PCM and Mathematics aptitude.',
-    admissionInfo: 'Admissions through University Engineering Entrance.',
-    isActive: true
-  },
-  {
-    id: 'p-06',
-    departmentId: 'd-04',
-    departmentCode: 'ECE',
-    departmentName: 'Electronics & Communication',
-    code: 'BTECH-ECE',
-    name: 'Bachelor of Technology in Electronics & Communication',
-    degreeLevel: 'Undergraduate',
-    durationYears: 4,
-    totalCredits: 168,
-    description: 'Rigorous engineering program in digital electronics, microprocessors, embedded C/C++, FPGA design, telecommunications, and high-frequency RF systems.',
-    eligibility: '10+2 with minimum 70% in PCM.',
-    admissionInfo: 'Engineering Admission Ranking.',
-    isActive: true
-  },
-  {
-    id: 'p-07',
-    departmentId: 'd-05',
-    departmentCode: 'EEE',
-    departmentName: 'Electrical & Electronics Engineering',
-    code: 'BTECH-EEE',
-    name: 'Bachelor of Technology in Electrical & Electronics Engineering',
-    degreeLevel: 'Undergraduate',
-    durationYears: 4,
-    totalCredits: 166,
-    description: 'Comprehensive program covering electric drives, power systems, renewable solar/wind generation, microgrid control, and industrial PLC automation.',
-    eligibility: '10+2 with minimum 65% in PCM.',
-    admissionInfo: 'University Entrance Merit.',
-    isActive: true
-  },
-  {
-    id: 'p-08',
-    departmentId: 'd-06',
-    departmentCode: 'MECH',
-    departmentName: 'Mechanical Engineering',
-    code: 'BTECH-MECH',
-    name: 'Bachelor of Technology in Mechanical Engineering',
-    degreeLevel: 'Undergraduate',
-    durationYears: 4,
-    totalCredits: 168,
-    description: 'Foundational & modern mechanical curriculum in solid mechanics, thermodynamics, fluid dynamics, CAD/CAM, finite element modeling, and robotics.',
-    eligibility: '10+2 with minimum 65% in PCM.',
-    admissionInfo: 'Centralized Engineering Admissions.',
-    isActive: true
-  }
-];
-
-export const INITIAL_SUBJECTS: Subject[] = [
-  // --- B.TECH CSE (p-01) - COMPLETE 4 YEARS / 8 SEMESTERS ---
-  // YEAR 1 - SEMESTER 1
-  {
-    id: 'sub-cse-101',
-    programId: 'p-01',
-    code: 'CS101',
-    name: 'Programming for Problem Solving in C',
-    year: 1,
-    semester: 1,
-    credits: 4,
-    courseType: 'Core',
-    description: 'Foundational course in algorithmic problem solving, procedural programming, pointers, memory allocation, and file I/O operations.',
-    prerequisites: ['Basic High School Mathematics'],
-    learningObjectives: [
-      'Master syntax, control flow, functions, and structured modular design.',
-      'Understand manual memory addressing, pointers, pointer arithmetic, and heap allocation.',
-      'Implement structured algorithms for searching, sorting, and recursion.'
-    ],
-    referenceBooks: ['The C Programming Language (Kernighan & Ritchie)', 'Programming with C (Byron Gottfried)'],
-    skillsDeveloped: ['C', 'Memory Management', 'Pointers', 'Structured Programming', 'Problem Solving'],
-    isActive: true,
-    units: [
-      {
-        id: 'u-101-1',
-        unitNumber: 1,
-        unitTitle: 'UNIT I: Introduction to Computing & Control Flow',
-        description: 'Computer architecture fundamentals, compilation process, primitive data types, operators, and conditional branching statements.',
-        topics: ['History & von Neumann Model', 'Variables & Constants', 'Arithmetic & Bitwise Operators', 'If-Else & Switch Case', 'Looping Constructs (while, for, do-while)'],
-        hours: 9
-      },
-      {
-        id: 'u-101-2',
-        unitNumber: 2,
-        unitTitle: 'UNIT II: Arrays, Strings & Modular Functions',
-        description: 'Single and multi-dimensional arrays, string manipulation, modular function definitions, parameter passing, and recursion.',
-        topics: ['1D and 2D Arrays', 'Matrix Operations', 'Null-Terminated Strings & string.h', 'Pass by Value vs Pass by Reference', 'Recursion & Call Stack Frames'],
-        hours: 9
-      },
-      {
-        id: 'u-101-3',
-        unitNumber: 3,
-        unitTitle: 'UNIT III: Pointers & Dynamic Memory Management',
-        description: 'Pointer variables, address-of operator, indirection, pointer arithmetic, dynamic memory functions (malloc, calloc, realloc, free).',
-        topics: ['Pointer Declarations & Dereferencing', 'Pointers and Arrays Equivalence', 'Double Pointers & Function Pointers', 'Dynamic Heap Allocation', 'Memory Leaks & Dangling Pointers'],
-        hours: 10
-      },
-      {
-        id: 'u-101-4',
-        unitNumber: 4,
-        unitTitle: 'UNIT IV: Structures, Unions & Bit-Fields',
-        description: 'User-defined composite types, nested structures, array of structures, union memory layouts, and bit-level field definitions.',
-        topics: ['Struct Declarations & Arrow Operator', 'Nested Structures', 'Unions & Shared Memory Layout', 'Typedef Aliases', 'Bit-Fields & Alignment'],
-        hours: 8
-      },
-      {
-        id: 'u-101-5',
-        unitNumber: 5,
-        unitTitle: 'UNIT V: File Handling & Preprocessor Directives',
-        description: 'Text and binary file streams, sequential and random access file operations, macro expansion, and header guards.',
-        topics: ['fopen, fclose, fread, fwrite', 'Formatted File I/O (fprintf, fscanf)', 'fseek, ftell, rewind', 'Macros with Arguments (#define)', 'Conditional Compilation (#ifdef)'],
-        hours: 9
-      }
-    ]
-  },
-  {
-    id: 'sub-cse-102',
-    programId: 'p-01',
-    code: 'MA101',
-    name: 'Linear Algebra & Calculus for Computing',
-    year: 1,
-    semester: 1,
-    credits: 4,
-    courseType: 'Core',
-    description: 'Matrix vector spaces, eigenvalues, eigenvectors, matrix decompositions, and multivariable calculus critical for graphics and machine learning.',
-    prerequisites: ['10+2 Mathematics'],
-    learningObjectives: ['Formulate linear transformations as matrix products.', 'Compute SVD and Eigendecomposition.'],
-    skillsDeveloped: ['Linear Algebra', 'Eigenvalues', 'Matrix Decomposition', 'Multivariable Calculus'],
-    isActive: true,
-    units: [
-      { id: 'u-102-1', unitNumber: 1, unitTitle: 'UNIT I: Matrices & Systems of Linear Equations', topics: ['Gaussian Elimination', 'Row Echelon Form', 'Vector Spaces', 'Linear Independence'], hours: 9 },
-      { id: 'u-102-2', unitNumber: 2, unitTitle: 'UNIT II: Eigenvalues & Diagonalization', topics: ['Characteristic Polynomial', 'Eigenvectors', 'Diagonalization', 'Orthogonal Diagonalization'], hours: 9 },
-      { id: 'u-102-3', unitNumber: 3, unitTitle: 'UNIT III: Multivariable Differential Calculus', topics: ['Partial Derivatives', 'Gradients & Jacobians', 'Hessian Matrix', 'Taylor Series in 2D'], hours: 9 },
-      { id: 'u-102-4', unitNumber: 4, unitTitle: 'UNIT IV: Integral Calculus & Vector Fields', topics: ['Double & Triple Integrals', 'Line Integrals', 'Green Theorem', 'Stokes Theorem'], hours: 9 },
-      { id: 'u-102-5', unitNumber: 5, unitTitle: 'UNIT V: Singular Value Decomposition (SVD)', topics: ['Inner Product Spaces', 'Gram-Schmidt Process', 'Singular Values', 'Low-Rank Approximations'], hours: 9 }
-    ]
-  },
-  // YEAR 1 - SEMESTER 2
-  {
-    id: 'sub-cse-103',
-    programId: 'p-01',
-    code: 'CS102',
-    name: 'Object-Oriented Programming with C++ & Java',
-    year: 1,
-    semester: 2,
-    credits: 4,
-    courseType: 'Core',
-    description: 'Core object-oriented paradigm covering encapsulation, inheritance, polymorphism, templates, generic collections, and exception handling.',
-    prerequisites: ['CS101 Programming in C'],
-    learningObjectives: ['Implement class hierarchies with virtual tables.', 'Use standard template library (STL) containers efficiently.'],
-    skillsDeveloped: ['C++', 'Java', 'OOP', 'STL', 'Polymorphism', 'Encapsulation'],
-    isActive: true,
-    units: [
-      { id: 'u-103-1', unitNumber: 1, unitTitle: 'UNIT I: Principles of OOP & Classes', topics: ['Class and Objects', 'Constructors & Destructors', 'Access Specifiers', 'Friend Functions'], hours: 9 },
-      { id: 'u-103-2', unitNumber: 2, unitTitle: 'UNIT II: Inheritance & Polymorphism', topics: ['Single & Multiple Inheritance', 'Virtual Base Classes', 'Virtual Functions & vtable', 'Abstract Classes'], hours: 9 },
-      { id: 'u-103-3', unitNumber: 3, unitTitle: 'UNIT III: Operator Overloading & Templates', topics: ['Unary & Binary Operator Overloading', 'Function Templates', 'Class Templates', 'Type Traits'], hours: 9 },
-      { id: 'u-103-4', unitNumber: 4, unitTitle: 'UNIT IV: Exception Handling & File Streams', topics: ['try-catch-throw Mechanism', 'Standard Exceptions', 'RAII Paradigm', 'fstream Buffers'], hours: 9 },
-      { id: 'u-103-5', unitNumber: 5, unitTitle: 'UNIT V: C++ STL & Java Collections', topics: ['vector, list, deque', 'map, set, unordered_map', 'Iterators & Algorithms', 'Java Interfaces & Lambdas'], hours: 9 }
-    ]
-  },
-  // YEAR 2 - SEMESTER 3
-  {
-    id: 'sub-cse-201',
-    programId: 'p-01',
-    code: 'CS201',
-    name: 'Data Structures & Algorithms',
-    year: 2,
-    semester: 3,
-    credits: 4,
-    courseType: 'Core',
-    description: 'Fundamental linear and non-linear data structures, asymptotic notation, balanced search trees, heaps, hash tables, and graph algorithms.',
-    prerequisites: ['CS101 Programming in C', 'CS102 OOP in C++'],
-    learningObjectives: ['Analyze algorithm asymptotic bounds with Big-O/Omega/Theta.', 'Implement self-balancing AVL and Red-Black trees.', 'Solve technical interview coding challenges with optimal space and time complexities.'],
-    referenceBooks: ['Introduction to Algorithms (CLRS)', 'Data Structures and Algorithm Analysis in C++ (Mark Allen Weiss)'],
-    skillsDeveloped: ['DSA', 'Algorithms', 'Binary Trees', 'Graphs', 'Dynamic Programming', 'Complexity Analysis'],
-    isActive: true,
-    units: [
-      {
-        id: 'u-201-1',
-        unitNumber: 1,
-        unitTitle: 'UNIT I: Asymptotic Analysis & Linear Data Structures',
-        description: 'Big-O, Omega, Theta mathematical definitions, space-time tradeoffs, linked lists (singly, doubly, circular), stack and queue applications.',
-        topics: ['Asymptotic Growth Rates & Master Theorem', 'Dynamic Arrays & Amortized Analysis', 'Singly & Doubly Linked Lists', 'Stack: Infix to Postfix & Evaluation', 'Queues, Deques & Monotonic Queues'],
-        hours: 10
-      },
-      {
-        id: 'u-201-2',
-        unitNumber: 2,
-        unitTitle: 'UNIT II: Trees & Self-Balancing Binary Search Trees',
-        description: 'Binary tree traversals, binary search trees (BST), AVL rotations, Red-Black tree properties, and B-trees for storage engines.',
-        topics: ['Tree Traversals (Inorder, Preorder, Postorder, Level-Order)', 'BST Insert, Delete & Search', 'AVL Tree Rotations (LL, RR, LR, RL)', 'Red-Black Tree Properties', 'Trie / Prefix Trees'],
-        hours: 10
-      },
-      {
-        id: 'u-201-3',
-        unitNumber: 3,
-        unitTitle: 'UNIT III: Heaps & Hash Tables',
-        description: 'Binary Min/Max heaps, priority queues, hash functions, collision resolution strategies (chaining, open addressing), and amortized resizing.',
-        topics: ['Heapify & Heapsort Algorithm', 'Priority Queue Operations', 'Hash Functions & Universal Hashing', 'Separate Chaining vs Linear/Quadratic Probing', 'Bloom Filters'],
-        hours: 9
-      },
-      {
-        id: 'u-201-4',
-        unitNumber: 4,
-        unitTitle: 'UNIT IV: Graph Algorithms',
-        description: 'Graph representation (Adjacency Matrix, Adjacency List), BFS, DFS, Topological Sorting, Minimum Spanning Trees, and Shortest Paths.',
-        topics: ['BFS, DFS & Connected Components', 'Topological Sort & Kahn Algorithm', 'Kruskal & Prim MST Algorithms', 'Dijkstra Single Source Shortest Path', 'Bellman-Ford & Floyd-Warshall'],
-        hours: 10
-      },
-      {
-        id: 'u-201-5',
-        unitNumber: 5,
-        unitTitle: 'UNIT V: Algorithm Design Paradigms',
-        description: 'Divide and conquer, greedy strategies, dynamic programming recurrence relations, memoization vs tabulation, and branch & bound.',
-        topics: ['Divide & Conquer (Merge Sort, Quick Sort)', 'Greedy Algorithms (Huffman Coding, Fractional Knapsack)', 'Dynamic Programming (0/1 Knapsack, LCS, LIS)', 'Backtracking (N-Queens, Sudoku)', 'NP-Completeness Overview'],
-        hours: 10
-      }
-    ]
-  },
-  {
-    id: 'sub-cse-202',
-    programId: 'p-01',
-    code: 'CS202',
-    name: 'Digital Logic & Computer Organization',
-    year: 2,
-    semester: 3,
-    credits: 3,
-    courseType: 'Core',
-    description: 'Boolean algebra, combinational & sequential circuits, ALU design, processor pipelining, cache memory hierarchy, and RISC-V architecture.',
-    prerequisites: ['Basic Electronics'],
-    skillsDeveloped: ['Computer Architecture', 'Digital Logic', 'Pipelining', 'Cache Memory', 'RISC-V'],
-    isActive: true,
-    units: [
-      { id: 'u-202-1', unitNumber: 1, unitTitle: 'UNIT I: Boolean Algebra & Combinational Logic', topics: ['K-Maps Minimization', 'Adders, Subtractors', 'Multiplexers & Decoders', 'ALU Architecture'], hours: 8 },
-      { id: 'u-202-2', unitNumber: 2, unitTitle: 'UNIT II: Sequential Circuits & Memory Elements', topics: ['Flip-Flops (SR, JK, D, T)', 'Registers & Shift Registers', 'Synchronous & Asynchronous Counters', 'State Machines'], hours: 8 },
-      { id: 'u-202-3', unitNumber: 3, unitTitle: 'UNIT III: CPU Datapath & Instruction Set Architecture', topics: ['RISC vs CISC', 'Instruction Fetch-Decode-Execute Cycle', 'Addressing Modes', 'Control Unit Design'], hours: 9 },
-      { id: 'u-202-4', unitNumber: 4, unitTitle: 'UNIT IV: Pipelining & Hazard Management', topics: ['5-Stage Pipeline', 'Data Hazards & Forwarding', 'Branch Hazards & Branch Prediction', 'Structural Hazards'], hours: 9 },
-      { id: 'u-202-5', unitNumber: 5, unitTitle: 'UNIT V: Memory Hierarchy & I/O Systems', topics: ['Direct-Mapped & Set-Associative Cache', 'Virtual Memory & Page Tables', 'DMA Controllers', 'Bus Architectures'], hours: 8 }
-    ]
-  },
-  // YEAR 2 - SEMESTER 4
-  {
-    id: 'sub-cse-203',
-    programId: 'p-01',
-    code: 'CS203',
-    name: 'Operating Systems & Concurrency',
-    year: 2,
-    semester: 4,
-    credits: 4,
-    courseType: 'Core',
-    description: 'Process management, POSIX threads, race conditions, semaphores, mutexes, memory virtualization, paging, file systems, and storage engines.',
-    prerequisites: ['CS201 Data Structures', 'CS202 Computer Organization'],
-    learningObjectives: ['Implement multi-threaded synchronized algorithms.', 'Understand kernel trap architecture and virtual memory mapping.'],
-    referenceBooks: ['Operating System Concepts (Silberschatz, Galvin)', 'Modern Operating Systems (Tanenbaum)'],
-    skillsDeveloped: ['Operating Systems', 'Linux', 'Concurrency', 'Multithreading', 'Virtual Memory', 'Semaphores'],
-    isActive: true,
-    units: [
-      { id: 'u-203-1', unitNumber: 1, unitTitle: 'UNIT I: OS Architecture & Process Management', topics: ['Dual Mode Operation (Kernel/User)', 'System Calls (fork, exec, wait)', 'Process State Lifecycle', 'CPU Scheduling Algorithms'], hours: 9 },
-      { id: 'u-203-2', unitNumber: 2, unitTitle: 'UNIT II: Threads, Concurrency & Synchronization', topics: ['POSIX Threads (pthread)', 'Race Conditions & Critical Section', 'Peterson Algorithm', 'Semaphores, Mutexes, Monitors'], hours: 10 },
-      { id: 'u-203-3', unitNumber: 3, unitTitle: 'UNIT III: Deadlocks & Prevention', topics: ['Coffman Conditions', 'Resource Allocation Graph', 'Banker Algorithm', 'Deadlock Detection & Recovery'], hours: 8 },
-      { id: 'u-203-4', unitNumber: 4, unitTitle: 'UNIT IV: Memory Virtualization & Paging', topics: ['Address Translation (MMU)', 'Multi-Level Paging & TLB', 'Page Replacement Algorithms (LRU, FIFO)', 'Thrashing & Working Set'], hours: 10 },
-      { id: 'u-203-5', unitNumber: 5, unitTitle: 'UNIT V: File Systems & Storage Management', topics: ['Inode Structure & Directory Tree', 'Virtual File System (VFS)', 'Disk Scheduling (SSTF, SCAN, C-SCAN)', 'Journaling & Crash Recovery'], hours: 9 }
-    ]
-  },
-  {
-    id: 'sub-cse-204',
-    programId: 'p-01',
-    code: 'CS204',
-    name: 'Database Management Systems & SQL',
-    year: 2,
-    semester: 4,
-    credits: 4,
-    courseType: 'Core',
-    description: 'Relational algebra, SQL queries, normalization (1NF to BCNF), B+ Tree indexing, ACID transaction management, and WAL write-ahead logging.',
-    prerequisites: ['CS201 Data Structures'],
-    skillsDeveloped: ['SQL', 'PostgreSQL', 'Normalization', 'ACID Transactions', 'Indexing', 'Query Optimization'],
-    isActive: true,
-    units: [
-      { id: 'u-204-1', unitNumber: 1, unitTitle: 'UNIT I: Relational Model & SQL Querying', topics: ['ER Diagrams & Relational Mapping', 'Relational Algebra Operators', 'Complex SQL Joins, Aggregations', 'Window Functions & Subqueries'], hours: 9 },
-      { id: 'u-204-2', unitNumber: 2, unitTitle: 'UNIT II: Database Normalization & Schema Design', topics: ['Functional Dependencies', '1NF, 2NF, 3NF, BCNF', 'Lossless Join & Dependency Preservation', 'Multivalued Dependencies (4NF)'], hours: 9 },
-      { id: 'u-204-3', unitNumber: 3, unitTitle: 'UNIT III: Storage Structures & B+ Tree Indexing', topics: ['Page Layout & Heap Files', 'B+ Tree Index Insertion & Deletion', 'Hash Indexing', 'Clustered vs Non-Clustered Indexes'], hours: 10 },
-      { id: 'u-204-4', unitNumber: 4, unitTitle: 'UNIT IV: Transaction Management & Concurrency Control', topics: ['ACID Properties', 'Serializability & Conflict Equivalence', 'Two-Phase Locking (2PL)', 'Multi-Version Concurrency Control (MVCC)'], hours: 10 },
-      { id: 'u-204-5', unitNumber: 5, unitTitle: 'UNIT V: Query Optimization & NoSQL Paradigms', topics: ['Query Execution Plan & Cost Estimator', 'Write-Ahead Logging (WAL) & ARIES Recovery', 'Document Stores (MongoDB)', 'Key-Value Stores (Redis)'], hours: 9 }
-    ]
-  },
-  // YEAR 3 - SEMESTER 5
-  {
-    id: 'sub-cse-301',
-    programId: 'p-01',
-    code: 'CS301',
-    name: 'Computer Networks & Internet Protocols',
-    year: 3,
-    semester: 5,
-    credits: 4,
-    courseType: 'Core',
-    description: 'OSI and TCP/IP protocol stacks, socket programming, flow and congestion control, routing algorithms (BGP, OSPF), DNS, TLS/SSL, and HTTP/3.',
-    prerequisites: ['CS203 Operating Systems'],
-    skillsDeveloped: ['Computer Networks', 'TCP/IP', 'Socket Programming', 'HTTP/3', 'Routing Protocols', 'Wireshark'],
-    isActive: true,
-    units: [
-      { id: 'u-301-1', unitNumber: 1, unitTitle: 'UNIT I: Physical & Data Link Layers', topics: ['OSI 7-Layer vs TCP/IP Model', 'Framing, Error Detection (CRC)', 'Sliding Window Protocols', 'CSMA/CD, Ethernet & Wi-Fi'], hours: 9 },
-      { id: 'u-301-2', unitNumber: 2, unitTitle: 'UNIT II: Network Layer & IP Routing', topics: ['IPv4 & IPv6 Addressing & Subnetting', 'CIDR & NAT', 'Routing Algorithms (Dijkstra, Distance Vector)', 'OSPF, BGP & Intra/Inter-Domain Routing'], hours: 10 },
-      { id: 'u-301-3', unitNumber: 3, unitTitle: 'UNIT III: Transport Layer & TCP Congestion Control', topics: ['UDP vs TCP Handshake', 'TCP Flow Control & Sliding Windows', 'TCP Congestion Control (Tahoe, Reno, BBR)', 'QUIC Protocol & UDP multiplexing'], hours: 10 },
-      { id: 'u-301-4', unitNumber: 4, unitTitle: 'UNIT IV: Application Layer Protocols', topics: ['DNS Hierarchical Lookup', 'HTTP/1.1, HTTP/2 & HTTP/3', 'SMTP, IMAP, FTP', 'WebSockets Real-Time Sync'], hours: 9 },
-      { id: 'u-301-5', unitNumber: 5, unitTitle: 'UNIT V: Network Security & Socket Programming', topics: ['TLS/SSL Handshake & Certificates', 'Firewalls & NAT Traversal', 'BSD Socket Programming in C/Python', 'Wireshark Packet Analysis'], hours: 9 }
-    ]
-  },
-  {
-    id: 'sub-cse-302',
-    programId: 'p-01',
-    code: 'CS302',
-    name: 'Theory of Computation & Compiler Design',
-    year: 3,
-    semester: 5,
-    credits: 4,
-    courseType: 'Core',
-    description: 'Finite automata, regular expressions, context-free grammars, pushdown automata, Turing machines, lexical analysis, AST parsing, and code generation.',
-    prerequisites: ['CS201 Data Structures'],
-    skillsDeveloped: ['Automata Theory', 'Compiler Design', 'Grammars', 'Parsing', 'Turing Machines', 'LLVM'],
-    isActive: true,
-    units: [
-      { id: 'u-302-1', unitNumber: 1, unitTitle: 'UNIT I: Finite Automata & Regular Languages', topics: ['DFA, NFA & Epsilon-NFA', 'NFA to DFA Conversion', 'Regular Expressions & Equivalence', 'Pumping Lemma for Regular Languages'], hours: 9 },
-      { id: 'u-302-2', unitNumber: 2, unitTitle: 'UNIT II: Context-Free Grammars & Pushdown Automata', topics: ['CFG Derivations & Parse Trees', 'Ambiguity & Chomsky Normal Form', 'Pushdown Automata (PDA)', 'Pumping Lemma for CFLs'], hours: 9 },
-      { id: 'u-302-3', unitNumber: 3, unitTitle: 'UNIT III: Turing Machines & Decidability', topics: ['Turing Machine Model', 'Halting Problem & Undecidability', 'Post Correspondence Problem', 'Time & Space Complexity Classes (P, NP)'], hours: 9 },
-      { id: 'u-302-4', unitNumber: 4, unitTitle: 'UNIT IV: Lexical Analysis & Syntax Parsing', topics: ['Lexer Tokens & Lex/Flex', 'LL(1) Top-Down Parsing', 'LR(0), SLR(1), LALR(1) Bottom-Up Parsing', 'Abstract Syntax Trees (AST)'], hours: 10 },
-      { id: 'u-302-5', unitNumber: 5, unitTitle: 'UNIT V: Intermediate Code Generation & Optimization', topics: ['Three-Address Code (TAC)', 'Static Single Assignment (SSA) Form', 'Control Flow Graphs & Basic Blocks', 'Common Subexpression Elimination & Register Allocation'], hours: 10 }
-    ]
-  },
-  // YEAR 3 - SEMESTER 6
-  {
-    id: 'sub-cse-303',
-    programId: 'p-01',
-    code: 'CS303',
-    name: 'Artificial Intelligence & Machine Learning',
-    year: 3,
-    semester: 6,
-    credits: 4,
-    courseType: 'Core',
-    description: 'Heuristic search, supervised learning, regression, classification, support vector machines, decision trees, neural networks, and deep learning backpropagation.',
-    prerequisites: ['MA101 Linear Algebra', 'CS201 Data Structures'],
-    skillsDeveloped: ['Machine Learning', 'Python', 'PyTorch', 'Neural Networks', 'Scikit-Learn', 'Feature Engineering'],
-    isActive: true,
-    units: [
-      { id: 'u-303-1', unitNumber: 1, unitTitle: 'UNIT I: Search Algorithms & Knowledge Representation', topics: ['A* Search & Heuristics', 'Minimax & Alpha-Beta Pruning', 'Constraint Satisfaction (CSP)', 'First-Order Logic'], hours: 9 },
-      { id: 'u-303-2', unitNumber: 2, unitTitle: 'UNIT II: Supervised Learning & Regression', topics: ['Linear & Polynomial Regression', 'Gradient Descent (Batch, SGD, Adam)', 'Logistic Regression & Cross-Entropy', 'Regularization (L1 Lasso, L2 Ridge)'], hours: 9 },
-      { id: 'u-303-3', unitNumber: 3, unitTitle: 'UNIT III: Classification & Tree-Based Models', topics: ['Decision Trees & Information Gain', 'Random Forests & Bagging', 'Gradient Boosted Trees (XGBoost)', 'Support Vector Machines (SVM & Kernels)'], hours: 10 },
-      { id: 'u-303-4', unitNumber: 4, unitTitle: 'UNIT IV: Unsupervised Learning & Dimensionality Reduction', topics: ['K-Means & Hierarchical Clustering', 'Principal Component Analysis (PCA)', 't-SNE & UMAP', 'Gaussian Mixture Models & EM'], hours: 9 },
-      { id: 'u-303-5', unitNumber: 5, unitTitle: 'UNIT V: Deep Neural Networks & Backpropagation', topics: ['Multi-Layer Perceptron (MLP)', 'Forward & Backward Propagation', 'Activation Functions (ReLU, GELU)', 'CNNs & Vision Transformers Overview'], hours: 10 }
-    ]
-  },
-  {
-    id: 'sub-cse-304',
-    programId: 'p-01',
-    code: 'CS304',
-    name: 'Full Stack Web Engineering & Cloud SaaS',
-    year: 3,
-    semester: 6,
-    credits: 4,
-    courseType: 'Core',
-    description: 'Modern reactive frontend architectures (TypeScript, Angular, React), REST/GraphQL APIs, Node.js runtime, PostgreSQL persistence, and Docker containerization.',
-    prerequisites: ['CS204 Database Management Systems'],
-    skillsDeveloped: ['TypeScript', 'Angular', 'Node.js', 'PostgreSQL', 'Docker', 'REST APIs', 'Tailwind CSS'],
-    isActive: true,
-    units: [
-      { id: 'u-304-1', unitNumber: 1, unitTitle: 'UNIT I: Modern TypeScript & Reactive Frontends', topics: ['ESNext & TypeScript Generics', 'Component Lifecycle & Signals', 'Reactive State Management (RxJS)', 'Responsive Layouts & Tailwind CSS'], hours: 9 },
-      { id: 'u-304-2', unitNumber: 2, unitTitle: 'UNIT II: Backend Microservices & API Design', topics: ['Node.js Event Loop & Non-Blocking I/O', 'Express & Fastify Frameworks', 'RESTful Resource Modeling', 'GraphQL Queries & Mutations'], hours: 10 },
-      { id: 'u-304-3', unitNumber: 3, unitTitle: 'UNIT III: Authentication, Authorization & Security', topics: ['JWT & Refresh Token Rotation', 'OAuth2.0 & OpenID Connect', 'Role-Based Access Control (RBAC)', 'OWASP Top 10 Prevention (XSS, CSRF, SQLi)'], hours: 9 },
-      { id: 'u-304-4', unitNumber: 4, unitTitle: 'UNIT IV: Real-Time Systems & Caching', topics: ['WebSocket Full-Duplex Channels', 'Redis Caching & Pub/Sub', 'Rate Limiting & Token Bucket Algorithms', 'Database Connection Pooling'], hours: 9 },
-      { id: 'u-304-5', unitNumber: 5, unitTitle: 'UNIT V: Containerization & Cloud Deployment', topics: ['Dockerfiles & Multi-Stage Builds', 'Docker Compose Multi-Container Orchestration', 'CI/CD Pipelines (GitHub Actions)', 'Deploying to Cloud (AWS, Supabase, Vercel)'], hours: 10 }
-    ]
-  },
-  // YEAR 4 - SEMESTER 7 & 8
-  {
-    id: 'sub-cse-401',
-    programId: 'p-01',
-    code: 'CS401',
-    name: 'Distributed Systems & Cloud Architecture',
-    year: 4,
-    semester: 7,
-    credits: 4,
-    courseType: 'Core',
-    description: 'CAP theorem, consensus algorithms (Raft, Paxos), distributed key-value stores, event-driven streaming (Kafka), microservice resilience, and AWS architecture.',
-    prerequisites: ['CS203 Operating Systems', 'CS301 Computer Networks'],
-    skillsDeveloped: ['Distributed Systems', 'Raft Consensus', 'Kafka', 'Microservices', 'System Design', 'AWS'],
-    isActive: true,
-    units: [
-      { id: 'u-401-1', unitNumber: 1, unitTitle: 'UNIT I: Foundations of Distributed Systems', topics: ['Network Partitions & Clock Skew (Lamport Timestamps)', 'CAP Theorem & PACELC', 'Consistency Models (Linearizability, Eventual)', 'RPC & Protocol Buffers (gRPC)'], hours: 10 },
-      { id: 'u-401-2', unitNumber: 2, unitTitle: 'UNIT II: Distributed Consensus & Replication', topics: ['Two-Phase Commit (2PC)', 'Paxos Consensus Protocol', 'Raft Leader Election & Log Replication', 'Byzantine Fault Tolerance (BFT)'], hours: 10 },
-      { id: 'u-401-3', unitNumber: 3, unitTitle: 'UNIT III: Distributed Storage & Partitioning', topics: ['Consistent Hashing & DynamoDB Ring', 'LSM-Trees vs B-Trees', 'Sharding & Replication Strategies', 'Distributed Transactions & Saga Pattern'], hours: 10 },
-      { id: 'u-401-4', unitNumber: 4, unitTitle: 'UNIT IV: Event-Driven Architectures & Message Brokers', topics: ['Apache Kafka Partitioning & Consumer Groups', 'Idempotent Producers & Exactly-Once Semantics', 'Dead Letter Queues & Circuit Breakers', 'Event Sourcing & CQRS'], hours: 9 },
-      { id: 'u-401-5', unitNumber: 5, unitTitle: 'UNIT V: Cloud Native Architecture & High Availability', topics: ['Kubernetes Pods, Deployments & Ingress', 'Service Meshes (Istio)', 'Global Server Load Balancing (GSLB)', 'High-Scale System Design Interview Prep'], hours: 10 }
-    ]
-  },
-  {
-    id: 'sub-cse-402',
-    programId: 'p-01',
-    code: 'CS402',
-    name: 'Major Capstone Placement Project & Industrial Internship',
-    year: 4,
-    semester: 8,
-    credits: 12,
-    courseType: 'Project / Seminar',
-    description: 'Full-semester industry immersion or comprehensive research capstone software engineering project under faculty and corporate mentor guidance.',
-    prerequisites: ['All Core Program Credits'],
-    skillsDeveloped: ['System Architecture', 'Agile Delivery', 'Production Deployment', 'Technical Presentation'],
-    isActive: true,
-    units: [
-      { id: 'u-402-1', unitNumber: 1, unitTitle: 'Phase I: Problem Definition & Architecture Design', topics: ['Industry Problem Statement Selection', 'Architecture Proposal & Design Doc', 'Feasibility Study & Tech Stack Review'], hours: 20 },
-      { id: 'u-402-2', unitNumber: 2, unitTitle: 'Phase II: MVP Development & Sprint Cycles', topics: ['Agile Sprint Planning', 'Continuous Integration & Code Review', 'Core Module Implementation'], hours: 30 },
-      { id: 'u-402-3', unitNumber: 3, unitTitle: 'Phase III: Production Deployment & Viva Voce', topics: ['Load Testing & Security Audits', 'Live Cloud Deployment', 'Comprehensive Defense & Technical Showcase'], hours: 30 }
-    ]
-  }
-];
-
-export const INITIAL_BATCHES: Batch[] = [
-  { id: 'b-01', name: 'Batch 2023-2027 (4th Year Placement Cohort)', graduationYear: 2027, startYear: 2023, isActive: true },
-  { id: 'b-02', name: 'Batch 2024-2028 (3rd Year Pre-Final Cohort)', graduationYear: 2028, startYear: 2024, isActive: true },
-  { id: 'b-03', name: 'Batch 2025-2029 (2nd Year Engineering)', graduationYear: 2029, startYear: 2025, isActive: true },
-  { id: 'b-04', name: 'Batch 2026-2030 (1st Year Freshmen)', graduationYear: 2030, startYear: 2026, isActive: true },
-  { id: 'b-05', name: 'Batch 2022-2026 (Graduating Batch)', graduationYear: 2026, startYear: 2022, isActive: true },
-  { id: 'b-06', name: 'Batch 2021-2025 (Alumni Cohort)', graduationYear: 2025, startYear: 2021, isActive: true }
-];
 
 @Injectable({
   providedIn: 'root'
@@ -600,10 +35,10 @@ export class OrganizationService {
   private jobService = inject(JobService);
   private alumniService = inject(AlumniService);
 
-  private departmentsSignal = signal<Department[]>(INITIAL_DEPARTMENTS);
-  private programsSignal = signal<Program[]>(INITIAL_PROGRAMS);
-  private subjectsSignal = signal<Subject[]>(INITIAL_SUBJECTS);
-  private batchesSignal = signal<Batch[]>(INITIAL_BATCHES);
+  private departmentsSignal = signal<Department[]>([]);
+  private programsSignal = signal<Program[]>([]);
+  private subjectsSignal = signal<Subject[]>([]);
+  private batchesSignal = signal<Batch[]>([]);
   private isLoadingSignal = signal<boolean>(false);
 
   departments = computed(() => this.departmentsSignal());
@@ -643,7 +78,7 @@ export class OrganizationService {
         .select('*')
         .order('name', { ascending: true });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped: Department[] = data.map((d: any) => ({
           id: d.id,
           code: d.code,
@@ -762,7 +197,7 @@ export class OrganizationService {
         .select('*, departments(code, name)')
         .order('name', { ascending: true });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped: Program[] = data.map((p: any) => ({
           id: p.id,
           departmentId: p.department_id,
@@ -988,7 +423,7 @@ export class OrganizationService {
         .select('*')
         .order('graduation_year', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped: Batch[] = data.map((b: any) => ({
           id: b.id,
           name: b.name,
@@ -1079,15 +514,6 @@ export class OrganizationService {
       else y4++; // 2027 or earlier
     });
 
-    // Fallback spread if all mock students have 2027 batch so user sees realistic year breakdown
-    if (y1 === 0 && y2 === 0 && y3 === 0 && y4 > 0) {
-      const total = y4;
-      y4 = Math.ceil(total * 0.35);
-      y3 = Math.floor(total * 0.28);
-      y2 = Math.floor(total * 0.22);
-      y1 = total - (y4 + y3 + y2);
-    }
-
     const total = studentsInDept.length;
 
     return {
@@ -1153,10 +579,10 @@ export class OrganizationService {
       }
     });
 
-    const highestCtcVal = salaryNumbers.length > 0 ? Math.max(...salaryNumbers) : 45.0;
+    const highestCtcVal = salaryNumbers.length > 0 ? Math.max(...salaryNumbers) : 0;
     const avgCtcVal = salaryNumbers.length > 0
       ? parseFloat((salaryNumbers.reduce((a, b) => a + b, 0) / salaryNumbers.length).toFixed(1))
-      : 18.5;
+      : 0;
 
     return {
       totalStudents,
@@ -1168,7 +594,7 @@ export class OrganizationService {
       placedStudents,
       placementRate,
       applicationsPerStudent,
-      avgSkillMatch: 82,
+      avgSkillMatch: 0,
       avgPackage: `₹${avgCtcVal} LPA`,
       highestPackage: `₹${highestCtcVal} LPA`,
       averagePackageLpa: avgCtcVal,
@@ -1299,10 +725,6 @@ export class OrganizationService {
         skillGaps.push(item.skill);
       }
     });
-
-    if (skillGaps.length === 0) {
-      skillGaps.push('Kubernetes / Helm', 'Kafka Event Streaming', 'System Design (Microservices)');
-    }
 
     return { demandedSkills, skillGaps };
   }

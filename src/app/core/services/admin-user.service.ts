@@ -11,7 +11,6 @@ import { Student, PlacementStatus } from '../models/student.model';
 import { Alumni } from '../models/alumni.model';
 import { Application } from '../models/application.model';
 import { User, UserRole } from '../models/user.model';
-import { MOCK_USERS } from '../data/mock-data';
 
 export interface DuplicateCheckResult {
   emailExists: boolean;
@@ -1249,20 +1248,6 @@ export class AdminUserService {
           status: a.isActive === false ? 'deactivated' : 'active',
           createdAt: a.createdAt || '2024-06-15T09:30:00Z',
           updatedAt: a.updatedAt
-        });
-      }
-    }
-
-    // 4. Incorporate Mock Users (Recruiters, Admins, etc.)
-    for (const m of MOCK_USERS) {
-      const emailKey = m.email.toLowerCase();
-      if (!seen.has(emailKey) && !seen.has(m.id)) {
-        seen.add(emailKey);
-        seen.add(m.id);
-        list.push({
-          ...m,
-          status: m.isActive === false ? 'deactivated' : 'active',
-          isActive: m.isActive !== false
         });
       }
     }

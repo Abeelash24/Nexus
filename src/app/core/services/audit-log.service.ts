@@ -3,53 +3,6 @@ import { AdminAuditLog, AuditAction } from '../models/audit-log.model';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 
-export const INITIAL_AUDIT_LOGS: AdminAuditLog[] = [
-  {
-    id: 'log-01',
-    adminId: 'u-admin-01',
-    adminName: 'Dr. Anand Verma',
-    adminEmail: 'placement.officer@careernexus.edu',
-    action: 'CREATE_STUDENT',
-    entityType: 'student',
-    entityId: 's-01',
-    details: { student_name: 'Rahul Sharma', roll_number: '23CS101', department: 'Computer Science & Engineering' },
-    createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
-  },
-  {
-    id: 'log-02',
-    adminId: 'u-admin-01',
-    adminName: 'Dr. Anand Verma',
-    adminEmail: 'placement.officer@careernexus.edu',
-    action: 'CREATE_ALUMNI',
-    entityType: 'alumni',
-    entityId: 'a-01',
-    details: { alumni_name: 'Priya Nair', company: 'Google', designation: 'Senior Software Engineer' },
-    createdAt: new Date(Date.now() - 3600000 * 18).toISOString()
-  },
-  {
-    id: 'log-03',
-    adminId: 'u-admin-01',
-    adminName: 'Dr. Anand Verma',
-    adminEmail: 'placement.officer@careernexus.edu',
-    action: 'CREATE_DEPARTMENT',
-    entityType: 'department',
-    entityId: 'dept-01',
-    details: { code: 'AI&DS', name: 'Artificial Intelligence & Data Science' },
-    createdAt: new Date(Date.now() - 3600000 * 12).toISOString()
-  },
-  {
-    id: 'log-04',
-    adminId: 'u-admin-01',
-    adminName: 'Dr. Anand Verma',
-    adminEmail: 'placement.officer@careernexus.edu',
-    action: 'CREATE_BATCH',
-    entityType: 'batch',
-    entityId: 'batch-01',
-    details: { name: 'Batch 2024-2028', graduation_year: 2028 },
-    createdAt: new Date(Date.now() - 3600000 * 4).toISOString()
-  }
-];
-
 @Injectable({
   providedIn: 'root'
 })
@@ -57,7 +10,7 @@ export class AuditLogService {
   private supabase = inject(SupabaseService);
   private authService = inject(AuthService);
 
-  private logsSignal = signal<AdminAuditLog[]>(INITIAL_AUDIT_LOGS);
+  private logsSignal = signal<AdminAuditLog[]>([]);
   private isLoadingSignal = signal<boolean>(false);
 
   logs = computed(() => this.logsSignal());
@@ -77,7 +30,7 @@ export class AuditLogService {
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped: AdminAuditLog[] = data.map((d: any) => ({
           id: d.id,
           adminId: d.admin_id,
