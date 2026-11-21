@@ -212,6 +212,23 @@ export const routes: Routes = [
           {
             path: 'notifications',
             loadComponent: () => import('./features/notifications/notifications.component').then(m => m.NotificationsComponent)
+          },
+          // Security: Block any student import or creation in Alumni portal
+          {
+            path: 'import',
+            redirectTo: 'dashboard'
+          },
+          {
+            path: 'add-student',
+            redirectTo: 'dashboard'
+          },
+          {
+            path: 'create-student',
+            redirectTo: 'dashboard'
+          },
+          {
+            path: 'add-mentee',
+            redirectTo: 'dashboard'
           }
         ]
       },
