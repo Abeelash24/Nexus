@@ -140,6 +140,14 @@ export const routes: Routes = [
             loadComponent: () => import('./features/recruiter/recruiter-applicants/recruiter-applicants.component').then(m => m.RecruiterApplicantsComponent)
           },
           {
+            path: 'applicant/:id',
+            loadComponent: () => import('./features/recruiter/recruiter-applicants/recruiter-applicants.component').then(m => m.RecruiterApplicantsComponent)
+          },
+          {
+            path: 'candidate/:id',
+            loadComponent: () => import('./features/recruiter/recruiter-applicants/recruiter-applicants.component').then(m => m.RecruiterApplicantsComponent)
+          },
+          {
             path: 'calendar',
             loadComponent: () => import('./features/calendar/placement-calendar.component').then(m => m.PlacementCalendarComponent)
           },

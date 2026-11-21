@@ -24,6 +24,7 @@ export interface Application {
   studentEmail: string;
   studentAvatar?: string;
   studentResumeUrl?: string;
+  studentSkills?: string[];
   jobId: string;
   jobTitle: string;
   companyId: string;

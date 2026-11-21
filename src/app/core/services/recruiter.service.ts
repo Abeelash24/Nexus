@@ -93,18 +93,9 @@ export class RecruiterService {
     });
   });
 
-  // Applications submitted to this recruiter's company or jobs
-  recruiterApplications = computed<Application[]>(() => {
-    const compName = this.recruiterCompanyName().toLowerCase().trim();
-    const recruiterJobIds = new Set(this.recruiterJobs().map(j => j.id));
-
-    return this.applicationService.applications().filter(a => {
-      if (a.jobId && recruiterJobIds.has(a.jobId)) return true;
-      const aComp = (a.companyName || '').toLowerCase().trim();
-      return (compName && compName !== 'corporate partner') &&
-        (aComp === compName || aComp.includes(compName) || compName.includes(aComp));
-    });
-  });
+  // Applications submitted to this recruiter's company or jobs (Server-Scoped)
+  private scopedApplicationsSignal = signal<Application[]>([]);
+  recruiterApplications = computed<Application[]>(() => this.scopedApplicationsSignal());
 
   // Metrics
   totalApplicants = computed(() => this.recruiterApplications().length);
@@ -123,8 +114,8 @@ export class RecruiterService {
   activeJobsCount = computed(() => this.recruiterJobs().filter(j => j.status === 'Active').length);
 
   /**
-   * Concurrently loads and refreshes recruiter jobs, drives, applications, and company data.
-   * Eliminates waterfall lag and serial roundtrips.
+   * Concurrently loads and refreshes recruiter jobs, drives, scoped applications, and company data.
+   * Direct server-level filtering with zero global student exposure.
    */
   async loadRecruiterData(force = false): Promise<void> {
     const currentId = this.authService.currentUser()?.id || null;
@@ -143,9 +134,9 @@ export class RecruiterService {
         await Promise.all([
           this.jobService.fetchJobsFromDatabase(),
           this.placementDriveService.fetchDrivesFromSupabase(),
-          this.applicationService.fetchApplicationsFromDatabase(),
           this.companyService.fetchCompaniesFromDatabase()
         ]);
+        await this.fetchScopedApplications();
         this.isInitialized.set(true);
       } catch (err: any) {
         console.warn('RecruiterService data load warning:', err);
@@ -159,8 +150,65 @@ export class RecruiterService {
     return this.loadPromise;
   }
 
+  /**
+   * Server-level query strictly filtering applications by this recruiter's company.
+   * Joined with public.students so candidate skills, resume_url, and cgpa are
+   * provided without any global StudentService usage.
+   */
+  async fetchScopedApplications(): Promise<Application[]> {
+    const client = this.supabase.getClient();
+    const compName = this.recruiterCompanyName();
+    let companyId = this.companyProfile()?.id;
+
+    if (!companyId && client && compName && compName !== 'Corporate Partner') {
+      try {
+        const { data: compRow } = await client
+          .from('companies')
+          .select('id')
+          .ilike('name', compName)
+          .limit(1)
+          .maybeSingle();
+        if (compRow?.id) {
+          companyId = compRow.id;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const apps = await this.applicationService.fetchApplicationsForCompany(companyId, compName);
+    this.scopedApplicationsSignal.set(apps);
+    return apps;
+  }
+
+  /**
+   * Strictly verifies whether an application or student belongs to
+   * this recruiter's company pipeline.
+   */
+  isCandidateAuthorizedForRecruiter(applicationIdOrStudentId: string, studentId?: string): boolean {
+    const apps = this.scopedApplicationsSignal();
+    return apps.some(a =>
+      a.id === applicationIdOrStudentId ||
+      a.studentId === applicationIdOrStudentId ||
+      (studentId && a.studentId === studentId)
+    );
+  }
+
+  /**
+   * Strictly retrieves candidate application details by ID only if the candidate
+   * has applied to this recruiter's company.
+   */
+  getApplicantById(applicantOrStudentId: string): Application | null {
+    const apps = this.scopedApplicationsSignal();
+    return apps.find(a =>
+      a.id === applicantOrStudentId ||
+      a.studentId === applicantOrStudentId
+    ) || null;
+  }
+
   resetState() {
     this.customCompanyName.set('');
+    this.scopedApplicationsSignal.set([]);
     this.isLoading.set(false);
     this.error.set(null);
     this.isInitialized.set(false);

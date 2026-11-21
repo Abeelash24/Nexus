@@ -1,8 +1,8 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { RecruiterService } from '../../../core/services/recruiter.service';
-import { StudentService } from '../../../core/services/student.service';
 import { JobService } from '../../../core/services/job.service';
 import { SkillMatchingService, SingleJobSkillMatch } from '../../../core/services/skill-matching.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
@@ -604,11 +604,12 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
 })
 export class RecruiterApplicantsComponent implements OnInit {
   recruiterService = inject(RecruiterService);
-  studentService = inject(StudentService);
   jobService = inject(JobService);
   skillMatchingService = inject(SkillMatchingService);
   supabase = inject(SupabaseService);
   toast = inject(ToastService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   searchQuery = signal('');
   statusFilter = signal('all');
@@ -640,17 +641,35 @@ export class RecruiterApplicantsComponent implements OnInit {
     return this.aiFitSummaries()[app.id] || null;
   });
 
-  ngOnInit(): void {
-    this.recruiterService.loadRecruiterData();
+  async ngOnInit(): Promise<void> {
+    await this.recruiterService.loadRecruiterData();
+    this.checkDeepLinkVerification();
+  }
+
+  private checkDeepLinkVerification() {
+    const candidateId = this.route.snapshot.params['id'] ||
+      this.route.snapshot.queryParams['candidateId'] ||
+      this.route.snapshot.queryParams['applicantId'] ||
+      this.route.snapshot.queryParams['studentId'];
+
+    if (!candidateId) return;
+
+    const matchingApp = this.recruiterService.getApplicantById(candidateId);
+    if (matchingApp) {
+      this.inspectCandidate(matchingApp);
+    } else {
+      this.inspectingApp = null;
+      this.toast.error(
+        'Access Denied 🔒',
+        'You can only view candidates who applied to your active placement drives.'
+      );
+      this.router.navigate(['/recruiter/applicants'], { replaceUrl: true });
+    }
   }
 
   getResumeUrl(app: Application | null): string | null {
     if (!app) return null;
-    if (app.studentResumeUrl) return app.studentResumeUrl;
-    const student = this.studentService.students().find(
-      s => s.id === app.studentId || s.userId === app.studentId
-    );
-    return student?.resumeUrl || null;
+    return app.studentResumeUrl || null;
   }
 
   async openApplicantResume(app: Application | null) {
@@ -677,10 +696,6 @@ export class RecruiterApplicantsComponent implements OnInit {
   }
 
   getApplicantSkillMatch(app: Application): SingleJobSkillMatch {
-    const student = this.studentService.students().find(
-      s => s.id === app.studentId || s.userId === app.studentId
-    ) || this.studentService.currentStudent();
-
     const job = this.jobService.jobs().find(j => j.id === app.jobId) || {
       id: app.jobId,
       companyId: app.companyId,
@@ -704,7 +719,22 @@ export class RecruiterApplicantsComponent implements OnInit {
       updatedAt: app.updatedAt
     };
 
-    return this.skillMatchingService.calculateJobSkillMatch(student, job, app);
+    const studentSkills = (app.studentSkills && app.studentSkills.length > 0)
+      ? app.studentSkills
+      : [];
+
+    const candidateStudent: any = {
+      id: app.studentId,
+      fullName: app.studentName,
+      skills: studentSkills,
+      cgpa: app.studentCgpa,
+      email: app.studentEmail,
+      resumeUrl: app.studentResumeUrl || '',
+      department: app.studentDepartment,
+      rollNumber: app.studentRoll
+    };
+
+    return this.skillMatchingService.calculateJobSkillMatch(candidateStudent, job, app);
   }
 
   filteredApplications = computed(() => {
@@ -750,6 +780,17 @@ export class RecruiterApplicantsComponent implements OnInit {
   }
 
   inspectCandidate(app: Application) {
+    if (!app) return;
+
+    // Strict verification: Ensure candidate belongs to this recruiter's authorized applications
+    const isAuthorized = this.recruiterService.isCandidateAuthorizedForRecruiter(app.id, app.studentId);
+    if (!isAuthorized) {
+      this.inspectingApp = null;
+      this.toast.error('Access Denied 🔒', 'You can only view candidates who applied to your active placement drives.');
+      this.router.navigate(['/recruiter/applicants'], { replaceUrl: true });
+      return;
+    }
+
     this.inspectingApp = app;
     // Auto-fetch AI fit summary if not already generated
     if (!this.aiFitSummaries()[app.id]) {

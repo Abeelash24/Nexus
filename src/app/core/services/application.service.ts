@@ -66,11 +66,36 @@ export class ApplicationService {
     const client = this.supabase.getClient();
     if (!this.supabase.isConfigured || !client) return;
 
+    const user = this.authService.currentUser();
+    const role = this.authService.actualRole();
+
+    // Security: Recruiters must strictly fetch applications belonging to their company only
+    if (role === 'recruiter' && user) {
+      const scoped = await this.fetchApplicationsForCompany(undefined, user.company);
+      this.applicationsSignal.set(scoped);
+      return;
+    }
+
     this.isLoading.set(true);
     try {
       const { data, error } = await client
         .from('applications')
-        .select('*')
+        .select(`
+          *,
+          student:students (
+            id,
+            user_id,
+            full_name,
+            email,
+            skills,
+            resume_url,
+            avatar_url,
+            profile_photo,
+            cgpa,
+            roll_number,
+            department
+          )
+        `)
         .order('applied_at', { ascending: false });
 
       if (error) {
@@ -90,6 +115,59 @@ export class ApplicationService {
     }
   }
 
+  /**
+   * Secure, server-filtered applicant query for Recruiters:
+   * Direct database-level filter on company_id / company_name, joined with
+   * public.students so candidate skills, resume_url, and cgpa are available
+   * without needing global StudentService.
+   */
+  async fetchApplicationsForCompany(companyId?: string, companyName?: string): Promise<Application[]> {
+    const client = this.supabase.getClient();
+    if (!this.supabase.isConfigured || !client) return [];
+
+    try {
+      let query = client
+        .from('applications')
+        .select(`
+          *,
+          student:students (
+            id,
+            user_id,
+            full_name,
+            email,
+            skills,
+            resume_url,
+            avatar_url,
+            profile_photo,
+            cgpa,
+            roll_number,
+            department
+          )
+        `)
+        .order('applied_at', { ascending: false });
+
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      } else if (companyName && companyName.trim() && companyName.trim() !== 'Corporate Partner') {
+        query = query.ilike('company_name', companyName.trim());
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn('Could not fetch scoped applications for company:', error.message);
+        return [];
+      }
+
+      if (data) {
+        const mapped = data.map((d: any) => this.mapDbRowToApplication(d));
+        return mapped;
+      }
+    } catch (e) {
+      console.warn('Exception in fetchApplicationsForCompany:', e);
+    }
+    return [];
+  }
+
   private initRealtimeSubscription() {
     if (!this.supabase.isConfigured) return;
     this.supabase.subscribeToChanges('applications', (payload) => {
@@ -106,17 +184,29 @@ export class ApplicationService {
     });
   }
 
-  private mapDbRowToApplication(row: any): Application {
+  mapDbRowToApplication(row: any): Application {
+    const student = row.student || {};
+    const skills = Array.isArray(student.skills) && student.skills.length > 0
+      ? student.skills
+      : (Array.isArray(row.student_skills) ? row.student_skills : (Array.isArray(row.skills) ? row.skills : []));
+
+    const resumeUrl = student.resume_url || row.student_resume_url || undefined;
+    const avatar = student.avatar_url || student.profile_photo || row.student_avatar || undefined;
+    const cgpa = (student.cgpa !== null && student.cgpa !== undefined)
+      ? Number(student.cgpa)
+      : Number(row.student_cgpa || 0);
+
     return {
       id: row.id,
       studentId: row.student_id,
-      studentName: row.student_name,
-      studentRoll: row.student_roll,
-      studentDepartment: row.student_department,
-      studentCgpa: Number(row.student_cgpa),
-      studentEmail: row.student_email,
-      studentAvatar: row.student_avatar,
-      studentResumeUrl: row.student_resume_url,
+      studentName: student.full_name || row.student_name,
+      studentRoll: student.roll_number || row.student_roll,
+      studentDepartment: student.department || row.student_department,
+      studentCgpa: cgpa,
+      studentEmail: student.email || row.student_email,
+      studentAvatar: avatar,
+      studentResumeUrl: resumeUrl,
+      studentSkills: skills,
       jobId: row.job_id,
       jobTitle: row.job_title,
       companyId: row.company_id,
