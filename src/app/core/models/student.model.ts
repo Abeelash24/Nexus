@@ -18,6 +18,20 @@ export interface Certification {
   credentialUrl?: string;
 }
 
+export interface ParsedResumeData {
+  skills: string[];
+  cgpa: number | null;
+  phone: string | null;
+  projects: Array<{
+    id?: string;
+    title: string;
+    description: string;
+    technologies?: string[];
+  }>;
+  filePath?: string;
+  mergedSkills?: string[];
+}
+
 export interface Student {
   id: string;
   userId: string;

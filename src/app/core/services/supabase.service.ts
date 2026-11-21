@@ -47,6 +47,17 @@ export class SupabaseService {
     return this.client?.storage || null;
   }
 
+  get functions() {
+    return this.client?.functions || null;
+  }
+
+  async invokeFunction<T = any>(functionName: string, body?: any): Promise<{ data: T | null; error: any }> {
+    if (!this.client) {
+      return { data: null, error: new Error('Supabase client is not configured') };
+    }
+    return this.client.functions.invoke<T>(functionName, { body });
+  }
+
   from(table: string) {
     return this.client ? this.client.from(table) : null;
   }

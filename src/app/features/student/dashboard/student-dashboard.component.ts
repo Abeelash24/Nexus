@@ -432,6 +432,15 @@ import { StatusTimelineComponent } from '../../../shared/ui/status-timeline.comp
                       <p class="text-xs text-slate-500 font-medium">{{ job.companyName }} • {{ job.location }}</p>
                     </div>
                   </div>
+
+                  <!-- Recommended Badge -->
+                  <span
+                    *ngIf="isJobRecommended(job)"
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-linear-to-r from-amber-500/15 to-orange-500/15 text-amber-700 border border-amber-300/80 shadow-2xs shrink-0"
+                  >
+                    <app-icon name="sparkles" [size]="11" customClass="text-amber-600"></app-icon>
+                    Recommended for You
+                  </span>
                 </div>
 
                 <div class="flex flex-wrap gap-1.5 my-3">
@@ -440,6 +449,17 @@ import { StatusTimelineComponent } from '../../../shared/ui/status-timeline.comp
                   </span>
                   <span class="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
                     {{ job.domain }}
+                  </span>
+                </div>
+
+                <!-- Matching Skills Highlight -->
+                <div *ngIf="getMatchingSkills(job).length > 0" class="flex flex-wrap items-center gap-1 mt-1 mb-2">
+                  <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Matches:</span>
+                  <span *ngFor="let ms of getMatchingSkills(job).slice(0, 3)" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    ✓ {{ ms }}
+                  </span>
+                  <span *ngIf="getMatchingSkills(job).length > 3" class="text-[10px] text-slate-400 font-medium">
+                    +{{ getMatchingSkills(job).length - 3 }} more
                   </span>
                 </div>
               </div>
@@ -611,14 +631,31 @@ export class StudentDashboardComponent {
 
   matchingJobs = computed(() => {
     const s = this.student();
-    const studentSkills = (s.skills || []).map(sk => sk.toLowerCase());
-    const active = this.jobService.activeJobs();
-    const matched = active.filter(j =>
-      (j.requiredSkills || []).some(rs => studentSkills.includes(rs.toLowerCase())) ||
-      s.cgpa >= j.minimumCgpa
-    );
-    return matched.length > 0 ? matched.slice(0, 4) : active.slice(0, 4);
+    const studentSkills = (s.skills || []).map(sk => sk.trim().toLowerCase());
+    const active = [...this.jobService.activeJobs()];
+
+    // Prioritize drives with higher skill intersections, followed by eligibility
+    active.sort((a, b) => {
+      const matchA = (a.requiredSkills || []).filter(rs => studentSkills.includes(rs.trim().toLowerCase())).length;
+      const matchB = (b.requiredSkills || []).filter(rs => studentSkills.includes(rs.trim().toLowerCase())).length;
+      if (matchB !== matchA) return matchB - matchA;
+      return (b.minimumCgpa || 0) - (a.minimumCgpa || 0);
+    });
+
+    return active.slice(0, 4);
   });
+
+  getMatchingSkills(job: any): string[] {
+    const s = this.student();
+    const studentSkills = (s.skills || []).map(sk => sk.trim().toLowerCase());
+    return (job.requiredSkills || []).filter((req: string) =>
+      studentSkills.includes(req.trim().toLowerCase())
+    );
+  }
+
+  isJobRecommended(job: any): boolean {
+    return this.getMatchingSkills(job).length > 0;
+  }
 
   activeApplication = computed(() => {
     const apps = this.applicationService.studentApplications();
