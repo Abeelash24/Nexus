@@ -9,3 +9,9 @@ entrypoint = "./functions/send-mobile-push/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/send-mobile-push/*.html" ]
+
+[functions.generate-fit-summary]
+enabled = true
+verify_jwt = false
+import_map = "./functions/generate-fit-summary/deno.json"
+entrypoint = "./functions/generate-fit-summary/index.ts"

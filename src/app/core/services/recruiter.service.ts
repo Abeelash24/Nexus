@@ -9,6 +9,7 @@ import { PlacementDriveService } from './placement-drive.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
 import { AuditLogService } from './audit-log.service';
+import { SupabaseService } from './supabase.service';
 
 @Injectable({
   providedIn: 'root'
@@ -21,6 +22,7 @@ export class RecruiterService {
   private authService = inject(AuthService);
   private toast = inject(ToastService);
   private auditLog = inject(AuditLogService);
+  private supabase = inject(SupabaseService);
 
   // Loading & Error States
   isLoading = signal<boolean>(false);
@@ -320,5 +322,110 @@ export class RecruiterService {
     );
 
     this.toast.success('Candidate Updated', `${app.studentName} has been moved to "${newStatus}" stage.`);
+  }
+
+  // --- AI CANDIDATE FIT SUMMARY (Gemini + Edge Function) ---
+
+  /**
+   * Invokes the 'generate-fit-summary' Supabase Edge Function to evaluate
+   * candidate skills against job requirements using Gemini AI.
+   */
+  async generateFitSummary(payload: {
+    student_skills: string[];
+    job_requirements: string[] | string;
+    job_title?: string;
+    candidate_name?: string;
+    student_cgpa?: number;
+    minimum_cgpa?: number;
+  }): Promise<{
+    success: boolean;
+    summary: string;
+    match_percentage?: number;
+    match_level?: string;
+    matched_skills?: string[];
+    missing_skills?: string[];
+    source?: string;
+    error?: string;
+  }> {
+    try {
+      const { data, error } = await this.supabase.invokeFunction<any>('generate-fit-summary', payload);
+
+      if (error || !data || !data.success || !data.summary) {
+        console.warn('Edge function generate-fit-summary notice (using smart fallback):', error || data);
+        const fallback = this.generateLocalFitSummaryFallback(payload);
+        return {
+          success: true,
+          summary: fallback.summary,
+          match_percentage: fallback.matchPercentage,
+          match_level: fallback.matchLevel,
+          matched_skills: fallback.matchedSkills,
+          missing_skills: fallback.missingSkills,
+          source: 'local_heuristic'
+        };
+      }
+
+      return data;
+    } catch (err: any) {
+      console.warn('generateFitSummary exception, using local fallback:', err);
+      const fallback = this.generateLocalFitSummaryFallback(payload);
+      return {
+        success: true,
+        summary: fallback.summary,
+        match_percentage: fallback.matchPercentage,
+        match_level: fallback.matchLevel,
+        matched_skills: fallback.matchedSkills,
+        missing_skills: fallback.missingSkills,
+        source: 'local_heuristic'
+      };
+    }
+  }
+
+  private generateLocalFitSummaryFallback(payload: {
+    student_skills: string[];
+    job_requirements: string[] | string;
+    job_title?: string;
+    candidate_name?: string;
+  }) {
+    const candidateName = payload.candidate_name || 'The candidate';
+    const jobTitle = payload.job_title || 'target position';
+    const studentSkills = payload.student_skills || [];
+    const jobReqs: string[] = Array.isArray(payload.job_requirements)
+      ? payload.job_requirements
+      : typeof payload.job_requirements === 'string'
+      ? payload.job_requirements.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean)
+      : [];
+
+    const lowerSet = new Set(studentSkills.map(s => s.toLowerCase()));
+    const matchedSkills = jobReqs.filter(r => lowerSet.has(r.toLowerCase()));
+    const missingSkills = jobReqs.filter(r => !lowerSet.has(r.toLowerCase()));
+
+    const total = Math.max(jobReqs.length, 1);
+    const matchPercentage = Math.min(100, Math.round((matchedSkills.length / total) * 100));
+    const matchLevel = matchPercentage >= 75 ? 'High Fit' : matchPercentage >= 45 ? 'Moderate Fit' : 'Needs Review';
+
+    const topMatched = matchedSkills.length > 0
+      ? matchedSkills.slice(0, 3).join(', ')
+      : studentSkills.slice(0, 3).join(', ') || 'core computational principles';
+
+    const topMissing = missingSkills.length > 0
+      ? missingSkills.slice(0, 3).join(', ')
+      : 'advanced enterprise scaling';
+
+    let summary = '';
+    if (matchPercentage >= 75) {
+      summary = `${candidateName} demonstrates strong technical alignment in ${topMatched}, positioning them as a high-potential day-one contributor for the ${jobTitle} role. While overall technical fit is robust, verifying hands-on depth in ${topMissing} during technical rounds is recommended.`;
+    } else if (matchPercentage >= 40) {
+      summary = `${candidateName} showcases foundational proficiency in ${topMatched}, satisfying several core baseline requirements for the ${jobTitle} position. However, noticeable gaps in ${topMissing} indicate that targeted interview probing and potential ramp-up support will be essential.`;
+    } else {
+      summary = `${candidateName} possesses transferable baseline skills including ${topMatched}, but exhibits significant gaps against key ${jobTitle} requirements such as ${topMissing}. Deeper technical screening is advised to assess the candidate's learning agility and domain depth before advancement.`;
+    }
+
+    return {
+      summary,
+      matchPercentage,
+      matchLevel,
+      matchedSkills,
+      missingSkills
+    };
   }
 }
