@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject, OnDestroy } from '@angular/core';
 import {
   Alumni,
   AlumniConnection,
+  ConnectedMentee,
   ConnectionStatus,
   ContactMethod,
   ContactVisibility
@@ -10,7 +11,6 @@ import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
 import { NotificationService } from './notification.service';
-import { StudentService } from './student.service';
 import { ChatService } from './chat.service';
 
 @Injectable({
@@ -21,7 +21,6 @@ export class AlumniService implements OnDestroy {
   private authService = inject(AuthService);
   private toast = inject(ToastService);
   private notificationService = inject(NotificationService);
-  private studentService = inject(StudentService);
   private chatService = inject(ChatService);
 
   private readonly LOCAL_STORAGE_KEY = 'careernexus_alumni_cache';
@@ -30,6 +29,7 @@ export class AlumniService implements OnDestroy {
 
   private alumniSignal = signal<Alumni[]>(this.loadInitialAlumni());
   private connectionsSignal = signal<AlumniConnection[]>(this.loadInitialConnections());
+  private menteesSignal = signal<ConnectedMentee[]>([]);
   isLoading = signal<boolean>(false);
   private realtimeConnectionChannel: any = null;
   private broadcastChannel: BroadcastChannel | null = null;
@@ -37,6 +37,7 @@ export class AlumniService implements OnDestroy {
   alumni = computed(() => this.alumniSignal());
   activeAlumni = computed(() => this.alumniSignal().filter(a => a.isActive !== false));
   connections = computed(() => this.connectionsSignal());
+  myMentees = computed(() => this.menteesSignal());
 
   // Dynamic real counters from state / Supabase
   totalProfessionalsCount = computed(() => this.alumniSignal().length);
@@ -269,7 +270,8 @@ export class AlumniService implements OnDestroy {
   private async initAlumniSystem() {
     await Promise.all([
       this.fetchAlumniFromDatabase(),
-      this.fetchConnectionsFromDatabase()
+      this.fetchConnectionsFromDatabase(),
+      this.fetchConnectedMentees()
     ]);
     this.setupRealtimeConnections();
   }
@@ -558,7 +560,6 @@ export class AlumniService implements OnDestroy {
     }
 
     const targetAlumni = this.alumniSignal().find(a => a.userId === params.receiverId);
-    const student = this.studentService.currentStudent();
 
     const client = this.supabase.getClient();
 
@@ -590,12 +591,12 @@ export class AlumniService implements OnDestroy {
     const newConn: AlumniConnection = {
       id: `conn-${Date.now()}`,
       requesterId: user.id,
-      requesterName: student?.fullName || user.fullName,
-      requesterAvatar: student?.profilePhoto || user.avatarUrl,
-      requesterDepartment: student?.department || 'Computer Science & Engineering',
-      requesterProgram: student?.course || 'B.Tech',
-      requesterGraduationYear: student?.graduationYear || 2027,
-      requesterSkills: student?.skills || ['Java', 'Data Structures', 'System Design'],
+      requesterName: user.fullName || 'Student Candidate',
+      requesterAvatar: user.avatarUrl,
+      requesterDepartment: user.department || 'Computer Science & Engineering',
+      requesterProgram: 'B.Tech',
+      requesterGraduationYear: 2027,
+      requesterSkills: ['Java', 'Data Structures', 'System Design'],
       receiverId: params.receiverId,
       receiverName: targetAlumni?.fullName || 'Alumni Mentor',
       receiverAvatar: targetAlumni?.profilePhoto,
@@ -745,6 +746,7 @@ export class AlumniService implements OnDestroy {
     });
 
     this.toast.success('Connection Accepted', `You are now connected with ${conn.requesterName || 'the student'}.`);
+    await this.fetchConnectedMentees();
   }
 
   /**
@@ -929,5 +931,123 @@ export class AlumniService implements OnDestroy {
   removeAlumniDirectly(id: string) {
     this.alumniSignal.update(list => list.filter(a => a.id !== id && a.userId !== id));
     this.saveAlumniToCache(this.alumniSignal());
+  }
+
+  /**
+   * Strictly fetches ONLY students who have an accepted mentorship connection
+   * with the logged-in alumni through public.mentorship_connections.
+   * Alumni NEVER queries the public.students table directly for all users.
+   */
+  async fetchConnectedMentees(): Promise<ConnectedMentee[]> {
+    const user = this.authService.currentUser();
+    const client = this.supabase.getClient();
+    if (!client || !user) return [];
+
+    try {
+      // 1. Primary query: joined view public.mentorship_connections
+      const { data, error } = await client
+        .from('mentorship_connections')
+        .select('*')
+        .eq('alumni_id', user.id)
+        .eq('status', 'accepted')
+        .order('accepted_at', { ascending: false });
+
+      if (!error && data) {
+        const mentees = data.map((d: any) => this.mapDbRowToMentee(d));
+        this.menteesSignal.set(mentees);
+        return mentees;
+      }
+
+      // 2. Direct connections table fallback (where receiver_id is the alumni user)
+      const { data: connData, error: connErr } = await client
+        .from('connections')
+        .select('*')
+        .eq('receiver_id', user.id)
+        .eq('status', 'accepted')
+        .order('accepted_at', { ascending: false });
+
+      if (!connErr && connData) {
+        const mentees = connData.map((d: any) => this.mapDbRowToMentee(d));
+        this.menteesSignal.set(mentees);
+        return mentees;
+      }
+    } catch (err) {
+      console.warn('Error fetching mentees through mentorship_connections:', err);
+    }
+
+    return [];
+  }
+
+  /**
+   * Strictly retrieves a mentee's profile details only if the student
+   * exists in this alumni's verified, accepted mentorship connection list.
+   * Returns null if the student is not a connected mentee.
+   */
+  async getMenteeById(studentIdOrUserId: string): Promise<ConnectedMentee | null> {
+    const user = this.authService.currentUser();
+    if (!user) return null;
+
+    // Check cached verified mentees first
+    const cached = this.menteesSignal().find(
+      m => m.studentId === studentIdOrUserId ||
+           m.userId === studentIdOrUserId ||
+           m.studentTableId === studentIdOrUserId ||
+           m.connectionId === studentIdOrUserId
+    );
+    if (cached) return cached;
+
+    const client = this.supabase.getClient();
+    if (!client) return null;
+
+    try {
+      // Query mentorship_connections where alumni_id = user.id AND status = 'accepted'
+      const { data, error } = await client
+        .from('mentorship_connections')
+        .select('*')
+        .eq('alumni_id', user.id)
+        .eq('status', 'accepted')
+        .or(`student_id.eq.${studentIdOrUserId},student_table_id.eq.${studentIdOrUserId},connection_id.eq.${studentIdOrUserId}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && data) {
+        const mentee = this.mapDbRowToMentee(data);
+        this.menteesSignal.update(list => [mentee, ...list.filter(m => m.connectionId !== mentee.connectionId)]);
+        return mentee;
+      }
+    } catch (err) {
+      console.warn('Error checking mentee by id:', err);
+    }
+
+    return null;
+  }
+
+  private mapDbRowToMentee(d: any): ConnectedMentee {
+    return {
+      connectionId: d.connection_id || d.id,
+      studentId: d.student_id || d.requester_id,
+      studentTableId: d.student_table_id,
+      userId: d.student_id || d.requester_id,
+      fullName: d.requester_name || d.student_name || 'Student Mentee',
+      email: d.student_email || '',
+      profilePhoto: d.requester_avatar || d.student_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(d.requester_name || 'Student')}&background=7c3aed&color=fff&bold=true`,
+      department: d.requester_department || d.student_department || 'Computer Science & Engineering',
+      program: d.requester_program || d.student_program || 'B.Tech',
+      graduationYear: d.requester_graduation_year || d.student_graduation_year || 2027,
+      rollNumber: d.student_roll_number || '',
+      cgpa: d.student_cgpa !== undefined && d.student_cgpa !== null ? Number(d.student_cgpa) : undefined,
+      skills: Array.isArray(d.requester_skills) ? d.requester_skills : (Array.isArray(d.student_skills) ? d.student_skills : []),
+      bio: d.student_bio || '',
+      preferredDomain: d.student_preferred_domain || '',
+      githubUrl: d.student_github_url || '',
+      linkedinUrl: d.student_linkedin_url || '',
+      portfolioUrl: d.student_portfolio_url || '',
+      placementStatus: d.student_placement_status || '',
+      mentorshipTopic: d.mentorship_topic || 'Career Guidance & Interview Prep',
+      reason: d.reason || '',
+      message: d.message || '',
+      acceptedAt: d.accepted_at,
+      createdAt: d.created_at
+    };
   }
 }

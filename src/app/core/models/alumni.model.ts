@@ -40,6 +40,33 @@ export interface AlumniConnection {
   updatedAt: string;
 }
 
+export interface ConnectedMentee {
+  connectionId: string;
+  studentId: string;
+  studentTableId?: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  profilePhoto: string;
+  department: string;
+  program: string;
+  graduationYear: number;
+  rollNumber?: string;
+  cgpa?: number;
+  skills: string[];
+  bio?: string;
+  preferredDomain?: string;
+  githubUrl?: string;
+  linkedinUrl?: string;
+  portfolioUrl?: string;
+  placementStatus?: string;
+  mentorshipTopic: string;
+  reason?: string;
+  message?: string;
+  acceptedAt?: string;
+  createdAt: string;
+}
+
 export interface Alumni {
   id: string;
   userId: string;

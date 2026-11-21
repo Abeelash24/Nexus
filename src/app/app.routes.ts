@@ -178,8 +178,20 @@ export const routes: Routes = [
             loadComponent: () => import('./features/alumni-portal/alumni-dashboard/alumni-dashboard.component').then(m => m.AlumniDashboardComponent)
           },
           {
+            path: 'mentees',
+            loadComponent: () => import('./features/alumni-portal/alumni-mentees/alumni-mentees.component').then(m => m.AlumniMenteesComponent)
+          },
+          {
             path: 'students',
-            loadComponent: () => import('./features/admin/admin-users/admin-users.component').then(m => m.AdminUsersComponent)
+            loadComponent: () => import('./features/alumni-portal/alumni-mentees/alumni-mentees.component').then(m => m.AlumniMenteesComponent)
+          },
+          {
+            path: 'student/:id',
+            loadComponent: () => import('./features/alumni-portal/alumni-mentee-profile/alumni-mentee-profile.component').then(m => m.AlumniMenteeProfileComponent)
+          },
+          {
+            path: 'mentees/:id',
+            loadComponent: () => import('./features/alumni-portal/alumni-mentee-profile/alumni-mentee-profile.component').then(m => m.AlumniMenteeProfileComponent)
           },
           {
             path: 'resources',

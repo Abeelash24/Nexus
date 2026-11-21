@@ -497,18 +497,18 @@ import { UserRole } from '../../core/models/user.model';
               </a>
 
               <a
-                routerLink="/alumni/students"
+                routerLink="/alumni/mentees"
                 routerLinkActive="bg-purple-50 text-purple-700 font-semibold"
                 (click)="onNavClick()"
-                title="Student Mentees"
-                aria-label="Student Mentees"
+                title="My Mentees"
+                aria-label="My Mentees"
                 class="group flex items-center rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
                 [ngClass]="isExpanded() ? 'px-3 py-2 justify-start' : 'px-0 py-2 justify-center'"
               >
                 <div class="w-8 h-8 flex items-center justify-center shrink-0">
                   <app-icon name="users" [size]="18"></app-icon>
                 </div>
-                <span class="nav-label truncate" [ngClass]="isExpanded() ? 'nav-label-expanded' : 'nav-label-collapsed'">Student Mentees</span>
+                <span class="nav-label truncate" [ngClass]="isExpanded() ? 'nav-label-expanded' : 'nav-label-collapsed'">My Mentees</span>
               </a>
 
               <a

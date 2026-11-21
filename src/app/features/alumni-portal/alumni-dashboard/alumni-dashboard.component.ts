@@ -1,9 +1,8 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AlumniService } from '../../../core/services/alumni.service';
-import { StudentService } from '../../../core/services/student.service';
 import { ChatService } from '../../../core/services/chat.service';
 import { CallService } from '../../../core/services/call.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -17,6 +16,7 @@ import { StatCardComponent } from '../../../shared/ui/stat-card.component';
   imports: [
     CommonModule,
     FormsModule,
+    RouterLink,
     IconComponent,
     StatCardComponent
   ],
@@ -257,10 +257,18 @@ import { StatCardComponent } from '../../../shared/ui/stat-card.component';
             </div>
 
             <div class="pt-3 border-t border-slate-100 flex items-center gap-2">
+              <a
+                [routerLink]="['/alumni/student', conn.requesterId]"
+                class="py-1.5 px-2.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                title="View Mentee Profile"
+              >
+                <app-icon name="user" [size]="14"></app-icon>
+                <span>Profile</span>
+              </a>
               <button
                 type="button"
                 (click)="chatWithRequester(conn)"
-                class="flex-1 py-1.5 px-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs flex items-center justify-center gap-1 shadow-xs"
+                class="flex-1 py-1.5 px-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs flex items-center justify-center gap-1 shadow-xs cursor-pointer"
               >
                 <app-icon name="message-square" [size]="14"></app-icon>
                 Chat
@@ -268,7 +276,7 @@ import { StatCardComponent } from '../../../shared/ui/stat-card.component';
               <button
                 type="button"
                 (click)="callRequester(conn, 'audio')"
-                class="p-1.5 rounded-lg bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-purple-700"
+                class="p-1.5 rounded-lg bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-purple-700 cursor-pointer"
                 title="Voice Call"
               >
                 <app-icon name="phone" [size]="15"></app-icon>
@@ -276,7 +284,7 @@ import { StatCardComponent } from '../../../shared/ui/stat-card.component';
               <button
                 type="button"
                 (click)="callRequester(conn, 'video')"
-                class="p-1.5 rounded-lg bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-purple-700"
+                class="p-1.5 rounded-lg bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-purple-700 cursor-pointer"
                 title="Video Session"
               >
                 <app-icon name="video" [size]="15"></app-icon>
@@ -407,7 +415,6 @@ import { StatCardComponent } from '../../../shared/ui/stat-card.component';
 })
 export class AlumniDashboardComponent {
   alumniService = inject(AlumniService);
-  studentService = inject(StudentService);
   chatService = inject(ChatService);
   callService = inject(CallService);
   authService = inject(AuthService);

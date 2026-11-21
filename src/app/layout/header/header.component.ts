@@ -355,7 +355,7 @@ export class HeaderComponent {
         return [
           { label: 'Dashboard', route: '/alumni/dashboard', icon: 'layout-dashboard', exact: true },
           { label: 'Profile', route: '/alumni/profile', icon: 'user' },
-          { label: 'Mentees', route: '/alumni/students', icon: 'users' },
+          { label: 'My Mentees', route: '/alumni/mentees', icon: 'users' },
           { label: 'Resources', route: '/alumni/resources', icon: 'folder' },
           { label: 'Chat', route: '/alumni/messages', icon: 'message-square', badge: () => this.chatService.totalUnreadCount() },
         ];

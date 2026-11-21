@@ -455,7 +455,7 @@ export class ChatComponent implements OnDestroy {
   listHeaderTitle = computed(() => {
     const r = this.portalRole();
     if (r === 'student') return 'My Mentors';
-    if (r === 'alumni') return 'My Students';
+    if (r === 'alumni') return 'My Mentees';
     if (r === 'recruiter') return 'Candidates';
     return 'Placement Messages';
   });

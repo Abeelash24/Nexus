@@ -180,7 +180,7 @@ export class MainLayoutComponent {
       case 'alumni':
         return [
           { label: 'Home', route: '/alumni/dashboard', icon: 'layout-dashboard', exact: true },
-          { label: 'Students', route: '/alumni/students', icon: 'users' },
+          { label: 'Mentees', route: '/alumni/mentees', icon: 'users' },
           { label: 'Chat', route: '/alumni/chat', icon: 'message-square', badge: () => this.chatService.totalUnreadCount() },
           { label: 'Drive', route: '/alumni/resources', icon: 'folder' },
           { label: 'Profile', route: '/alumni/profile', icon: 'user' }
